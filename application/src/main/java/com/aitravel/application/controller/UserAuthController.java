@@ -5,6 +5,7 @@ import com.aitravel.application.dto.user.LoginRequest;
 import com.aitravel.application.dto.user.UserRequestDTO;
 import com.aitravel.application.model.User;
 import com.aitravel.application.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +20,12 @@ public class UserAuthController {
     private final UserService userService;
 
     @PostMapping("/signup")
-    public ResponseEntity<UserAuthResponse> signup(@RequestBody UserRequestDTO request) {
+    public ResponseEntity<UserAuthResponse> signup(@Valid  @RequestBody UserRequestDTO request) {
         return ResponseEntity.ok(userService.signup(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserAuthResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<UserAuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(userService.login(request));
     }
 

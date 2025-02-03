@@ -28,7 +28,7 @@ public class Itinerary {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"itineraries"})  // Prevent circular reference
+    @JsonIgnoreProperties({"itineraries"})
     private User user;
 
     @Column(name = "title", nullable = false)
