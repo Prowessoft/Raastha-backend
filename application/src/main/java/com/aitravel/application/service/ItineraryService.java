@@ -77,7 +77,7 @@ public class ItineraryService {
      * Fetches basic itineraries for a user by userId.
      * Returns only the itinerary table information without related entities.
      */
-    public List<ItineraryBasicResponse> getBasicItinerariesByUserId(Long userId) {
+    public List<ItineraryBasicResponse> getBasicItinerariesByUserId(String userId) {
         log.info("Fetching itinerary table information for user ID: {}", userId);
         return itineraryRepository.findByUserUserId(userId).stream()
                 .map(itinerary -> new ItineraryBasicResponse(

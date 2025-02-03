@@ -24,11 +24,10 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class User implements UserDetails {
+public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
-    private Long userId;
+    @Column(name = "user_id", length = 32)
+    private String userId;
 
     @Column(unique = true, nullable = false)
     private String name;
@@ -51,7 +50,6 @@ public class User implements UserDetails {
     @Column(name = "avatar_img_url")
     private String avatarImgUrl;
 
-    // Add relationship with Itinerary
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore  // Prevent circular reference
     @Builder.Default
@@ -66,54 +64,5 @@ public class User implements UserDetails {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-
-    // UserDetails implementation methods
-    @Override
-    @JsonIgnore
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
-    }
-
-    @Override
-    @JsonIgnore
-    public String getUsername() {
-        return this.name;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    @JsonIgnore
-    public boolean isEnabled() {
-        return true;
-    }
-
-    // Add custom methods for JSON serialization
-    public UserResponseDTO toDTO() {
-        return UserResponseDTO.builder()
-                .userId(this.userId)
-                .name(this.name)
-                .email(this.email)
-                .avatarImgUrl(this.avatarImgUrl)
-                .createdAt(this.createdAt)
-                .updatedAt(this.updatedAt)
-                .build();
     }
 }

@@ -1,5 +1,6 @@
 package com.aitravel.application.config;
 
+import com.aitravel.application.model.User;
 import com.aitravel.application.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -27,6 +29,8 @@ import java.util.List;
 public class SecurityConfig {
     private final UserRepository userRepository;
 
+    private final CustomUserDetailsService customUserDetailsService;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -37,7 +41,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())
-                .cors(cors-> cors.configurationSource(corsConfigurationSource()));
+                .cors(cors-> cors.configurationSource(corsConfigurationSource()))
+                .userDetailsService(customUserDetailsService);
 
 
         return http.build();
@@ -63,12 +68,6 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByName(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 }
 

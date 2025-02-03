@@ -34,7 +34,7 @@ public class ItineraryController {
      * @return List of itineraries (only fields from the itinerary table)
      */
     @GetMapping("/user/{userId}/basic")
-    public ResponseEntity<List<ItineraryBasicResponse>> getBasicItineraries(@PathVariable Long userId) {
+    public ResponseEntity<List<ItineraryBasicResponse>> getBasicItineraries(@PathVariable String userId) {
         try {
             List<ItineraryBasicResponse> itineraries = itineraryService.getBasicItinerariesByUserId(userId);
             return ResponseEntity.ok(itineraries);

@@ -1,6 +1,6 @@
 package com.aitravel.application.controller;
 
-import com.aitravel.application.dto.user.AuthResponse;
+import com.aitravel.application.dto.user.UserAuthResponse;
 import com.aitravel.application.dto.user.LoginRequest;
 import com.aitravel.application.dto.user.UserRequestDTO;
 import com.aitravel.application.model.User;
@@ -19,17 +19,17 @@ public class UserAuthController {
     private final UserService userService;
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signup(@RequestBody UserRequestDTO request) {
+    public ResponseEntity<UserAuthResponse> signup(@RequestBody UserRequestDTO request) {
         return ResponseEntity.ok(userService.signup(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<UserAuthResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(userService.login(request));
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<User> getUserDetails(@PathVariable Long userId) {
+    public ResponseEntity<User> getUserDetails(@PathVariable String userId) {
         try {
             User user = userService.getUserDetails(userId);
             return ResponseEntity.ok(user);

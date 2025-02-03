@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ItineraryRequest {
     @JsonProperty("user_id")
-    private Long userId;
+    private String userId;
     private String title;
     private String description;
     private List<DayRequest> days;

@@ -10,6 +10,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ItineraryRepository extends JpaRepository<Itinerary, UUID> {
-    List<Itinerary> findByUserUserId(Long userId);
+    List<Itinerary> findByUserUserId(String userId);
 }
 

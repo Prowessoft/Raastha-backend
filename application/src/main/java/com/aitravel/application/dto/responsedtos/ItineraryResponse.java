@@ -9,7 +9,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ItineraryResponse {
-    private Long userId;
+    private String userId;
     private String title;
     private String description;
     private List<DayResponse> days;
