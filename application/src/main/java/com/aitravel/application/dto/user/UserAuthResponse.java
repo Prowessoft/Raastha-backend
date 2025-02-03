@@ -14,4 +14,7 @@ import java.util.UUID;
 public class UserAuthResponse {
     private String userId;
     private String message;
+
+    private String name;
+    private String avatarImgUrl;
 }

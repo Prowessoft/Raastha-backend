@@ -50,6 +50,8 @@ public class UserService {
         return UserAuthResponse.builder()
                 .message("User registered successfully")
                 .userId(savedUser.getUserId())
+                .avatarImgUrl(savedUser.getAvatarImgUrl())
+                .name(savedUser.getName())
                 .build();
     }
 
@@ -71,6 +73,8 @@ public class UserService {
                 return UserAuthResponse.builder()
                         .userId(user.getUserId())
                         .message("Login successful")
+                        .avatarImgUrl(user.getAvatarImgUrl())
+                        .name(user.getName())
                         .build();
             } else {
                 throw new AuthenticationFailedException("Invalid email or password.");
