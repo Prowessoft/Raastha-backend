@@ -15,6 +15,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProfileRequestDTO {
+    private String name;
     private String location;
     private String bio;
     private String website;

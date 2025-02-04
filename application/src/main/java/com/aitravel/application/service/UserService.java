@@ -7,8 +7,14 @@ import com.aitravel.application.dto.user.UserRequestDTO;
 import com.aitravel.application.exceptions.AuthenticationFailedException;
 import com.aitravel.application.exceptions.UserAlreadyExistsException;
 import com.aitravel.application.exceptions.UserNotFoundException;
+import com.aitravel.application.model.Profile;
 import com.aitravel.application.model.User;
+import com.aitravel.application.repository.ProfileRepository;
 import com.aitravel.application.repository.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +24,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -25,10 +32,15 @@ import java.util.UUID;
 @Slf4j
 public class UserService {
     private final UserRepository userRepository;
+    private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    @PersistenceContext
+    private EntityManager entityManager;  // Inject EntityManager
 
+    @Transactional
     public UserAuthResponse signup(UserRequestDTO request) {
+        // Check if user already exists
         if (userRepository.existsByName(request.getName())) {
             throw new UserAlreadyExistsException("User with name '" + request.getName() + "' already exists.");
         }
@@ -36,24 +48,51 @@ public class UserService {
             throw new UserAlreadyExistsException("User with email '" + request.getEmail() + "' already exists.");
         }
 
+        // Create and save user
         User user = User.builder()
-                .userId(UUID.randomUUID().toString().replace("-",""))
+                .userId(UUID.randomUUID().toString().replace("-", ""))
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .avatarImgUrl(request.getAvatarImgUrl())
                 .build();
 
+        log.info("Saving user: {}", user.getEmail());
         User savedUser = userRepository.save(user);
-        log.info("New user registered: {}", savedUser.getEmail());
+        log.info("User saved with ID: {}", savedUser.getUserId());
+
+        // Re-attach the saved user to the persistence context
+        User attachedUser = entityManager.merge(savedUser);
+
+        // Create profile
+        Profile profile = Profile.builder()
+                .userId(attachedUser.getUserId())  // Use the attached user's ID
+                .user(attachedUser)  // Set the attached user reference
+                .location(null)
+                .bio(null)
+                .website(null)
+                .joinDate(LocalDateTime.now())
+                .instagramUrl(null)
+                .facebookUrl(null)
+                .twitterUrl(null)
+                .linkedinUrl(null)
+                .youtubeUrl(null)
+                .phone(null)
+                .languages(new String[0])
+                .build();
+
+        log.info("Saving profile for user ID: {}", attachedUser.getUserId());
+        entityManager.persist(profile);
+        log.info("Profile saved successfully for user ID: {}", attachedUser.getUserId());
 
         return UserAuthResponse.builder()
                 .message("User registered successfully")
-                .userId(savedUser.getUserId())
-                .avatarImgUrl(savedUser.getAvatarImgUrl())
-                .name(savedUser.getName())
+                .userId(attachedUser.getUserId())
+                .avatarImgUrl(attachedUser.getAvatarImgUrl())
+                .name(attachedUser.getName())
                 .build();
     }
+
 
     public UserAuthResponse login(LoginRequest request) {
         try {

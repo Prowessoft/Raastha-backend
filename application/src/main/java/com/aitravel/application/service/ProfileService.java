@@ -1,7 +1,6 @@
 package com.aitravel.application.service;
 
 import com.aitravel.application.dto.requestdtos.ProfileRequestDTO;
-import com.aitravel.application.dto.requestdtos.SocialMediaDTO;
 import com.aitravel.application.dto.responsedtos.ProfileResponseDTO;
 import com.aitravel.application.exceptions.ProfileNotFoundException;
 import com.aitravel.application.exceptions.UserNotFoundException;
@@ -9,15 +8,15 @@ import com.aitravel.application.model.Profile;
 import com.aitravel.application.model.User;
 import com.aitravel.application.repository.ProfileRepository;
 import com.aitravel.application.repository.UserRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.fasterxml.jackson.core.type.TypeReference;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +37,9 @@ public class ProfileService {
         profile.setLanguages(requestDTO.getLanguages().toArray(new String[0]));
 
         // Set other fields
+        if(requestDTO.getName() != null) {
+            user.setName(requestDTO.getName());
+        }
         profile.setLocation(requestDTO.getLocation());
         profile.setBio(requestDTO.getBio());
         profile.setWebsite(requestDTO.getWebsite());

@@ -1,5 +1,6 @@
 package com.aitravel.application.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Profile {
     @Id
     @Column(name = "user_id", length = 32)
@@ -23,7 +25,8 @@ public class Profile {
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "user_id")
-    private User user;
+//    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private User user;  // Add JsonIgnoreProperties here
 
     private String location;
 
