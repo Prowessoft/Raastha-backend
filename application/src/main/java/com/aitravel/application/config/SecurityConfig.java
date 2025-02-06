@@ -37,8 +37,9 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/itinerary/**").permitAll().
-                        requestMatchers("/api/profiles/**").permitAll()
+                        .requestMatchers("/api/itinerary/**").permitAll()
+                        .requestMatchers("/api/itineraries/**").permitAll()
+                        .requestMatchers("/api/profiles/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults())

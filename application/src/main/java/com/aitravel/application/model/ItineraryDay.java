@@ -1,16 +1,12 @@
 package com.aitravel.application.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(name = "itinerary_day")
@@ -25,7 +21,7 @@ public class ItineraryDay {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "itinerary_id", nullable = false)
-    private Itinerary itinerary;
+    private ItineraryOld itinerary;
 
     @Column(name = "day_number", nullable = false)
     private int dayNumber;

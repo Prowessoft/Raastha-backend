@@ -1,6 +1,5 @@
 package com.aitravel.application.model;
 
-import com.aitravel.application.dto.user.UserResponseDTO;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -8,13 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @Entity
@@ -53,7 +48,7 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @JsonIgnore  // Prevent circular reference
     @Builder.Default
-    private List<Itinerary> itineraries = new ArrayList<>();
+    private List<ItineraryOld> itineraries = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

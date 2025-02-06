@@ -1,58 +1,65 @@
 package com.aitravel.application.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
+import org.hibernate.annotations.GenericGenerator;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Entity
-@Table(name = "itinerary")
+
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@Entity
+@Table(name = "itineraries")
 public class Itinerary {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "itinerary_id")
-    private UUID itineraryId;
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"itineraries"})
-    private User user;
+    // userId stored as String (VARCHAR(32))
+    @Column(name = "user_id", nullable = false, length = 32)
+    private String userId;
 
-    @Column(name = "title", nullable = false)
     private String title;
+    private String status;
+    private String visibility;
 
-    @Column(name = "description", nullable = false)
-    private String description;
+    // These fields come from tripDetails.destination and are stored in our table
+    @Column(name = "destination_name")
+    private String destinationName;
 
+    // Store coordinates as a string "lat,lng"
+    @Column(name = "destination_coordinates")
+    private String destinationCoordinates;
+
+    // TripDates stored directly in itineraries
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    // Metadata fields
+    private Integer version;
+    @Column(name = "is_template")
+    private Boolean isTemplate;
+    private String language;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    // OneToOne relationship to budgets
+    @OneToOne(mappedBy = "itinerary", cascade = CascadeType.ALL)
+    private Budget budget;
+
+    // OneToMany to days
     @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<ItineraryDay> days = new ArrayList<>();
+    private List<Day> days = new ArrayList<>();
 
-    // Helper method to add a day
-    public void addDay(ItineraryDay day) {
-        days.add(day);
-        day.setItinerary(this);
-    }
 
-    // Helper method to remove a day
-    public void removeDay(ItineraryDay day) {
-        days.remove(day);
-        day.setItinerary(null);
-    }
+    // Shared access mappings; see SharedAccess entity below.
+    @OneToMany(mappedBy = "itinerary", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SharedAccess> sharedAccess;
 }
-
-
-
