@@ -117,7 +117,7 @@ public class ItineraryMapper {
                                 }
                                 ldto.setCoordinates(coList);
                             }
-                            ldto.setName(act.getPlace().getName());
+                            ldto.setName(act.getPlace().getLocationName());
                             ldto.setPlaceId(act.getPlace().getGooglePlaceId());
                             pdto.setLocation(ldto);
 
@@ -463,12 +463,13 @@ public class ItineraryMapper {
 
                         Place p = new Place();
                         p.setName(hotelDto.getTitle());
+                        System.out.println(hotelDto.getTitle());
                         p.setDescription(hotelDto.getDescription());
                         if (hotelDto.getLocation() != null && hotelDto.getLocation().getCoordinates() != null) {
                             String coordStr = String.join(",", hotelDto.getLocation().getCoordinates()
                                     .stream().map(Object::toString).toArray(String[]::new));
                             p.setCoordinates(coordStr);
-                            p.setName(hotelDto.getLocation().getName());
+                            p.setLocationName(hotelDto.getLocation().getName());
                         }
                         p.setPlaceType("hotel");
                         if (hotelDto.getContact() != null) {

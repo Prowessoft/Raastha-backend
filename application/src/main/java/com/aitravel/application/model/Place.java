@@ -22,6 +22,8 @@ public class Place {
 
     @Column(name="name", nullable=false)
     private String name;
+
+
     private String description;
     private String address;
 
@@ -32,6 +34,8 @@ public class Place {
     private String placeType;  // "hotel", "restaurant", or "activity"
 
     private Double rating;
+    @Column(name="location_name")
+    private String locationName;
     private Integer userRatingsTotal;
     private Integer priceLevel;
     private String website;
