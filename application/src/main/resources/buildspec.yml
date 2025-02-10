@@ -1,0 +1,13 @@
+version: 0.2
+phases:
+  build:
+    commands:
+      - echo packaging jar file....
+      - mvn clean package
+  post_build:
+    commands:
+      - echo build complete.
+artifacts:
+  files:
+    - target/travelogger-cicd.jar
+  discard-paths: yes

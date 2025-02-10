@@ -2,6 +2,7 @@ package com.aitravel.application.objectmapper;
 
 import com.aitravel.application.dto.ItineraryDTO;
 import com.aitravel.application.model.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,214 +15,246 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class ItineraryMapper {
+
     // Converts an Itinerary entity to a full DTO with nested data
     public ItineraryDTO toDTO(Itinerary itinerary) {
-        if (itinerary == null) return null;
-        ItineraryDTO dto = new ItineraryDTO();
-        dto.setId(itinerary.getId());
-        dto.setUserId(itinerary.getUserId());
-        dto.setTripImg(itinerary.getTripImg());
-        dto.setTitle(itinerary.getTitle());
-        dto.setStatus(itinerary.getStatus());
-        dto.setVisibility(itinerary.getVisibility());
-        dto.setCreatedAt(itinerary.getCreatedAt());
-        dto.setUpdatedAt(itinerary.getUpdatedAt());
-
-        // Map trip details
-        ItineraryDTO.TripDetailsDTO td = new ItineraryDTO.TripDetailsDTO();
-        ItineraryDTO.DestinationDTO dest = new ItineraryDTO.DestinationDTO();
-        dest.setName(itinerary.getDestinationName());
-        if (itinerary.getDestinationCoordinates() != null) {
-            String[] parts = itinerary.getDestinationCoordinates().split(",");
-            List<Double> coords = new ArrayList<>();
-            for (String part : parts) {
-                coords.add(Double.parseDouble(part.trim()));
+        log.info("Starting mapping of Itinerary to ItineraryDTO");
+        try {
+            if (itinerary == null) {
+                log.warn("Provided itinerary is null. Returning null DTO.");
+                return null;
             }
-            dest.setCoordinates(coords);
-        }
-        td.setDestination(dest);
-        td.setStartDate(itinerary.getStartDate());
-        td.setEndDate(itinerary.getEndDate());
-        if (itinerary.getBudget() != null) {
-            ItineraryDTO.TripBudgetDTO tbd = new ItineraryDTO.TripBudgetDTO();
-            tbd.setCurrency(itinerary.getBudget().getCurrency());
-            tbd.setTotal(itinerary.getBudget().getTotalAmount().doubleValue());
-            ItineraryDTO.BudgetBreakdownDTO bbd = new ItineraryDTO.BudgetBreakdownDTO();
-            bbd.setAccommodation(itinerary.getBudget().getAccommodationAmount().doubleValue());
-            bbd.setActivities(itinerary.getBudget().getActivitiesAmount().doubleValue());
-            bbd.setDining(itinerary.getBudget().getDiningAmount().doubleValue());
-            bbd.setTransport(itinerary.getBudget().getTransportAmount().doubleValue());
-            tbd.setBreakdown(bbd);
-            td.setBudget(tbd);
-        }
-        dto.setTripDetails(td);
+            ItineraryDTO dto = new ItineraryDTO();
+            dto.setId(itinerary.getId());
+            dto.setUserId(itinerary.getUserId());
+            dto.setTripImg(itinerary.getTripImg());
+            dto.setTitle(itinerary.getTitle());
+            dto.setStatus(itinerary.getStatus());
+            dto.setVisibility(itinerary.getVisibility());
+            dto.setCreatedAt(itinerary.getCreatedAt());
+            dto.setUpdatedAt(itinerary.getUpdatedAt());
 
-        // Map days
-        if (itinerary.getDays() != null) {
-            List<ItineraryDTO.DayDTO> dayDTOs = new ArrayList<>();
-            for (Day d : itinerary.getDays()) {
-                ItineraryDTO.DayDTO dayDto = new ItineraryDTO.DayDTO();
-                dayDto.setId(d.getId().toString());
-                dayDto.setDayNumber(d.getDayNumber());
-                dayDto.setDate(d.getDate());
-                ItineraryDTO.DayBudgetDTO dbd = new ItineraryDTO.DayBudgetDTO();
-                if (d.getPlannedBudget() != null)
-                    dbd.setPlanned(d.getPlannedBudget().doubleValue());
-                if (d.getActualBudget() != null)
-                    dbd.setActual(d.getActualBudget().doubleValue());
-                dayDto.setBudget(dbd);
-                dayDto.setNotes(d.getNotes());
-
-                // Map sections from activities
-                if (d.getActivities() != null) {
-                    ItineraryDTO.SectionsDTO sections = new ItineraryDTO.SectionsDTO();
-                    List<ItineraryDTO.PlaceDTO> hotels = new ArrayList<>();
-                    List<ItineraryDTO.PlaceDTO> acts = new ArrayList<>();
-                    List<ItineraryDTO.PlaceDTO> restaurants = new ArrayList<>();
-
-                    for (Activity act : d.getActivities()) {
-                        ItineraryDTO.PlaceDTO pdto = new ItineraryDTO.PlaceDTO();
-                        pdto.setId(act.getPlace().getId().toString());
-                        pdto.setTitle(act.getPlace().getName());
-                        pdto.setDescription(act.getPlace().getDescription());
-                        pdto.setType(act.getPlace().getPlaceType());
-
-                        // Map location
-                        ItineraryDTO.LocationDTO ldto = new ItineraryDTO.LocationDTO();
-                        if (act.getPlace().getCoordinates() != null) {
-                            String[] coords = act.getPlace().getCoordinates().split(",");
-                            List<Double> coList = new ArrayList<>();
-                            for (String c : coords) {
-                                coList.add(Double.parseDouble(c.trim()));
-                            }
-                            ldto.setCoordinates(coList);
-                        }
-                        ldto.setName(act.getPlace().getName());
-                        ldto.setPlaceId(act.getPlace().getGooglePlaceId());
-                        pdto.setLocation(ldto);
-
-                        pdto.setStartTime(act.getStartTime() != null ? act.getStartTime().toString() : null);
-                        pdto.setEndTime(act.getEndTime() != null ? act.getEndTime().toString() : null);
-                        pdto.setDuration(act.getDuration());
-                        pdto.setPrice(act.getPrice());
-
-                        // Map contact info
-                        ItineraryDTO.ContactDTO cdto = new ItineraryDTO.ContactDTO();
-                        cdto.setPhone(act.getPlace().getPhone());
-                        cdto.setWebsite(act.getPlace().getWebsite());
-                        cdto.setGoogleMapsUrl(act.getPlace().getGoogleMapsUrl());
-                        pdto.setContact(cdto);
-
-                        // Map photos for the place
-                        if (act.getPlace().getPhotos() != null && !act.getPlace().getPhotos().isEmpty()) {
-                            List<ItineraryDTO.PhotoDTO> photos = new ArrayList<>();
-                            act.getPlace().getPhotos().forEach(photo -> {
-                                ItineraryDTO.PhotoDTO pd = new ItineraryDTO.PhotoDTO();
-                                pd.setUrl(photo.getUrl());
-                                pd.setCaption(photo.getCaption());
-                                photos.add(pd);
-                            });
-                            pdto.setPhotos(photos);
-                        }
-
-                        // Map operating hours
-                        if (act.getPlace().getOperatingHours() != null && !act.getPlace().getOperatingHours().isEmpty()) {
-                            ItineraryDTO.OperatingHoursDTO ohDTO = new ItineraryDTO.OperatingHoursDTO();
-                            List<ItineraryDTO.OperatingPeriodDTO> periods = new ArrayList<>();
-                            act.getPlace().getOperatingHours().forEach(oh -> {
-                                ItineraryDTO.OperatingPeriodDTO opdto = new ItineraryDTO.OperatingPeriodDTO();
-                                // Optionally convert numeric day to text (e.g., 1 -> Monday)
-                                opdto.setDay(oh.getDayOfWeek());
-                                opdto.setHours(oh.getOpenTime() + "-" + oh.getCloseTime());
-                                periods.add(opdto);
-                            });
-                            // todo need to implement some logic here for isOpen
-                            ohDTO.setIsOpen(true); // You can derive this according to your business rules.
-                            ohDTO.setPeriods(periods);
-                            pdto.setOperatingHours(ohDTO);
-                        }
-
-                        // Map booking info
-                        if (act.getBookingInfo() != null) {
-                            ItineraryDTO.BookingInfoDTO biDTO = new ItineraryDTO.BookingInfoDTO();
-                            biDTO.setConfirmationNumber(act.getBookingInfo().getConfirmationNumber());
-                            biDTO.setReservationNumber(act.getBookingInfo().getReservationNumber());
-                            biDTO.setNotes(act.getBookingInfo().getNotes());
-                            pdto.setBookingInfo(biDTO);
-                        }
-
-                        // Add to correct section list based on type.
-                        String type = act.getPlace().getPlaceType();
-                        if ("hotel".equalsIgnoreCase(type))
-                            hotels.add(pdto);
-                        else if ("restaurant".equalsIgnoreCase(type))
-                            restaurants.add(pdto);
-                        else if ("activity".equalsIgnoreCase(type))
-                            acts.add(pdto);
+            // Map trip details
+            log.debug("Mapping trip details");
+            ItineraryDTO.TripDetailsDTO td = new ItineraryDTO.TripDetailsDTO();
+            ItineraryDTO.DestinationDTO dest = new ItineraryDTO.DestinationDTO();
+            dest.setName(itinerary.getDestinationName());
+            if (itinerary.getDestinationCoordinates() != null) {
+                String[] parts = itinerary.getDestinationCoordinates().split(",");
+                List<Double> coords = new ArrayList<>();
+                for (String part : parts) {
+                    try {
+                        coords.add(Double.parseDouble(part.trim()));
+                    } catch (NumberFormatException e) {
+                        log.error("Error parsing destination coordinate '{}': {}", part, e.getMessage());
                     }
-                    sections.setHotels(hotels);
-                    sections.setRestaurants(restaurants);
-                    sections.setActivities(acts);
-                    dayDto.setSections(sections);
                 }
-
-                // Map travelInfo from travel routes
-                if(d.getTravelRoutes() != null && !d.getTravelRoutes().isEmpty()){
-                    ItineraryDTO.TravelInfoDTO travelInfoDTO = new ItineraryDTO.TravelInfoDTO();
-                    travelInfoDTO.setMode(d.getTravelRoutes().get(0).getTravelMode());
-                    List<ItineraryDTO.RouteDTO> routeDTOList = new ArrayList<>();
-                    d.getTravelRoutes().forEach(tr -> {
-                        ItineraryDTO.RouteDTO routeDTO = new ItineraryDTO.RouteDTO();
-                        routeDTO.setFrom(tr.getFromActivity() != null && tr.getFromActivity().getPlace() != null ?
-                                tr.getFromActivity().getPlace().getId().toString() : null);
-                        routeDTO.setTo(tr.getToActivity() != null && tr.getToActivity().getPlace() != null ?
-                                tr.getToActivity().getPlace().getId().toString() : null);
-                        routeDTO.setDistance(tr.getDistance());
-                        routeDTO.setDuration(tr.getDuration());
-                        routeDTO.setPolyline(tr.getPolyline());
-                        routeDTOList.add(routeDTO);
-                    });
-                    travelInfoDTO.setRoutes(routeDTOList);
-                    dayDto.setTravelInfo(travelInfoDTO);
-                }
-
-                dayDTOs.add(dayDto);
+                dest.setCoordinates(coords);
             }
-            dto.setDays(dayDTOs);
+            td.setDestination(dest);
+            td.setStartDate(itinerary.getStartDate());
+            td.setEndDate(itinerary.getEndDate());
+            if (itinerary.getBudget() != null) {
+                log.debug("Mapping budget details");
+                ItineraryDTO.TripBudgetDTO tbd = new ItineraryDTO.TripBudgetDTO();
+                tbd.setCurrency(itinerary.getBudget().getCurrency());
+                tbd.setTotal(itinerary.getBudget().getTotalAmount().doubleValue());
+                ItineraryDTO.BudgetBreakdownDTO bbd = new ItineraryDTO.BudgetBreakdownDTO();
+                bbd.setAccommodation(itinerary.getBudget().getAccommodationAmount().doubleValue());
+                bbd.setActivities(itinerary.getBudget().getActivitiesAmount().doubleValue());
+                bbd.setDining(itinerary.getBudget().getDiningAmount().doubleValue());
+                bbd.setTransport(itinerary.getBudget().getTransportAmount().doubleValue());
+                tbd.setBreakdown(bbd);
+                td.setBudget(tbd);
+            }
+            dto.setTripDetails(td);
+
+            // Map days
+            if (itinerary.getDays() != null) {
+                log.debug("Mapping {} days", itinerary.getDays().size());
+                List<ItineraryDTO.DayDTO> dayDTOs = new ArrayList<>();
+                for (Day d : itinerary.getDays()) {
+                    log.debug("Mapping Day with id: {} and dayNumber: {}", d.getId(), d.getDayNumber());
+                    ItineraryDTO.DayDTO dayDto = new ItineraryDTO.DayDTO();
+                    dayDto.setId(d.getId().toString());
+                    dayDto.setDayNumber(d.getDayNumber());
+                    dayDto.setDate(d.getDate());
+                    ItineraryDTO.DayBudgetDTO dbd = new ItineraryDTO.DayBudgetDTO();
+                    if (d.getPlannedBudget() != null)
+                        dbd.setPlanned(d.getPlannedBudget().doubleValue());
+                    if (d.getActualBudget() != null)
+                        dbd.setActual(d.getActualBudget().doubleValue());
+                    dayDto.setBudget(dbd);
+                    dayDto.setNotes(d.getNotes());
+
+                    // Map sections from activities
+                    if (d.getActivities() != null) {
+                        log.debug("Mapping activities sections for Day id: {}", d.getId());
+                        ItineraryDTO.SectionsDTO sections = new ItineraryDTO.SectionsDTO();
+                        List<ItineraryDTO.PlaceDTO> hotels = new ArrayList<>();
+                        List<ItineraryDTO.PlaceDTO> acts = new ArrayList<>();
+                        List<ItineraryDTO.PlaceDTO> restaurants = new ArrayList<>();
+
+                        for (Activity act : d.getActivities()) {
+                            ItineraryDTO.PlaceDTO pdto = new ItineraryDTO.PlaceDTO();
+                            pdto.setId(act.getPlace().getId().toString());
+                            pdto.setTitle(act.getPlace().getName());
+                            pdto.setDescription(act.getPlace().getDescription());
+                            pdto.setType(act.getPlace().getPlaceType());
+
+                            // Map location
+                            ItineraryDTO.LocationDTO ldto = new ItineraryDTO.LocationDTO();
+                            if (act.getPlace().getCoordinates() != null) {
+                                String[] coords = act.getPlace().getCoordinates().split(",");
+                                List<Double> coList = new ArrayList<>();
+                                for (String c : coords) {
+                                    try {
+                                        coList.add(Double.parseDouble(c.trim()));
+                                    } catch (NumberFormatException e) {
+                                        log.error("Error parsing activity coordinate '{}': {}", c, e.getMessage());
+                                    }
+                                }
+                                ldto.setCoordinates(coList);
+                            }
+                            ldto.setName(act.getPlace().getName());
+                            ldto.setPlaceId(act.getPlace().getGooglePlaceId());
+                            pdto.setLocation(ldto);
+
+                            pdto.setStartTime(act.getStartTime() != null ? act.getStartTime().toString() : null);
+                            pdto.setEndTime(act.getEndTime() != null ? act.getEndTime().toString() : null);
+                            pdto.setDuration(act.getDuration());
+                            pdto.setPrice(act.getPrice());
+
+                            // Map contact info
+                            ItineraryDTO.ContactDTO cdto = new ItineraryDTO.ContactDTO();
+                            cdto.setPhone(act.getPlace().getPhone());
+                            cdto.setWebsite(act.getPlace().getWebsite());
+                            cdto.setGoogleMapsUrl(act.getPlace().getGoogleMapsUrl());
+                            pdto.setContact(cdto);
+
+                            // Map photos for the place
+                            if (act.getPlace().getPhotos() != null && !act.getPlace().getPhotos().isEmpty()) {
+                                List<ItineraryDTO.PhotoDTO> photos = new ArrayList<>();
+                                act.getPlace().getPhotos().forEach(photo -> {
+                                    ItineraryDTO.PhotoDTO pd = new ItineraryDTO.PhotoDTO();
+                                    pd.setUrl(photo.getUrl());
+                                    pd.setCaption(photo.getCaption());
+                                    photos.add(pd);
+                                });
+                                pdto.setPhotos(photos);
+                            }
+
+                            // Map operating hours
+                            if (act.getPlace().getOperatingHours() != null && !act.getPlace().getOperatingHours().isEmpty()) {
+                                ItineraryDTO.OperatingHoursDTO ohDTO = new ItineraryDTO.OperatingHoursDTO();
+                                List<ItineraryDTO.OperatingPeriodDTO> periods = new ArrayList<>();
+                                act.getPlace().getOperatingHours().forEach(oh -> {
+                                    ItineraryDTO.OperatingPeriodDTO opdto = new ItineraryDTO.OperatingPeriodDTO();
+                                    opdto.setDay(oh.getDayOfWeek());
+                                    opdto.setHours(oh.getOpenTime() + "-" + oh.getCloseTime());
+                                    periods.add(opdto);
+                                });
+                                ohDTO.setIsOpen(true); // Derive isOpen according to business rules.
+                                ohDTO.setPeriods(periods);
+                                pdto.setOperatingHours(ohDTO);
+                            }
+
+                            // Map booking info
+                            if (act.getBookingInfo() != null) {
+                                ItineraryDTO.BookingInfoDTO biDTO = new ItineraryDTO.BookingInfoDTO();
+                                biDTO.setConfirmationNumber(act.getBookingInfo().getConfirmationNumber());
+                                biDTO.setReservationNumber(act.getBookingInfo().getReservationNumber());
+                                biDTO.setNotes(act.getBookingInfo().getNotes());
+                                pdto.setBookingInfo(biDTO);
+                            }
+
+                            // Add to correct section list based on type.
+                            String type = act.getPlace().getPlaceType();
+                            if ("hotel".equalsIgnoreCase(type)) {
+                                hotels.add(pdto);
+                            } else if ("restaurant".equalsIgnoreCase(type)) {
+                                restaurants.add(pdto);
+                            } else if ("activity".equalsIgnoreCase(type)) {
+                                acts.add(pdto);
+                            }
+                        }
+                        sections.setHotels(hotels);
+                        sections.setRestaurants(restaurants);
+                        sections.setActivities(acts);
+                        dayDto.setSections(sections);
+                    }
+
+                    // Map travelInfo from travel routes
+                    if (d.getTravelRoutes() != null && !d.getTravelRoutes().isEmpty()) {
+                        log.debug("Mapping travel info for Day id: {}", d.getId());
+                        ItineraryDTO.TravelInfoDTO travelInfoDTO = new ItineraryDTO.TravelInfoDTO();
+                        travelInfoDTO.setMode(d.getTravelRoutes().get(0).getTravelMode());
+                        List<ItineraryDTO.RouteDTO> routeDTOList = new ArrayList<>();
+                        d.getTravelRoutes().forEach(tr -> {
+                            ItineraryDTO.RouteDTO routeDTO = new ItineraryDTO.RouteDTO();
+                            routeDTO.setFrom(tr.getFromActivity() != null && tr.getFromActivity().getPlace() != null ?
+                                    tr.getFromActivity().getPlace().getId().toString() : null);
+                            routeDTO.setTo(tr.getToActivity() != null && tr.getToActivity().getPlace() != null ?
+                                    tr.getToActivity().getPlace().getId().toString() : null);
+                            routeDTO.setDistance(tr.getDistance());
+                            routeDTO.setDuration(tr.getDuration());
+                            routeDTO.setPolyline(tr.getPolyline());
+                            routeDTOList.add(routeDTO);
+                        });
+                        travelInfoDTO.setRoutes(routeDTOList);
+                        dayDto.setTravelInfo(travelInfoDTO);
+                    }
+
+                    dayDTOs.add(dayDto);
+                }
+                dto.setDays(dayDTOs);
+            }
+
+            // Map sharedWith from sharedAccess
+            if (itinerary.getSharedAccess() != null) {
+                log.debug("Mapping shared access details");
+                List<ItineraryDTO.SharedWithDTO> shared = new ArrayList<>();
+                itinerary.getSharedAccess().forEach(sa -> {
+                    ItineraryDTO.SharedWithDTO sw = new ItineraryDTO.SharedWithDTO();
+                    sw.setUserId(sa.getUserId());
+                    sw.setEmail(sa.getEmail());
+                    sw.setPermission(sa.getPermission());
+                    shared.add(sw);
+                });
+                dto.setSharedWith(shared);
+            }
+
+            // Map metadata – tags and lastSavedBy are omitted if not persisted.
+            ItineraryDTO.MetadataDTO meta = new ItineraryDTO.MetadataDTO();
+            meta.setLanguage(itinerary.getLanguage());
+            meta.setIsTemplate(itinerary.getIsTemplate());
+            meta.setVersion(itinerary.getVersion());
+            dto.setMetadata(meta);
+
+            log.info("Completed mapping of Itinerary id: {} to ItineraryDTO", itinerary.getId());
+            return dto;
         }
-
-        // Map sharedWith from sharedAccess
-        if (itinerary.getSharedAccess() != null) {
-            List<ItineraryDTO.SharedWithDTO> shared = new ArrayList<>();
-            itinerary.getSharedAccess().forEach(sa -> {
-                ItineraryDTO.SharedWithDTO sw = new ItineraryDTO.SharedWithDTO();
-                sw.setUserId(sa.getUserId());
-                sw.setEmail(sa.getEmail());
-                sw.setPermission(sa.getPermission());
-                shared.add(sw);
-            });
-            dto.setSharedWith(shared);
+        catch (Exception e){
+            log.error("Exception when it converting to DTO: " +e);
+            return null;
         }
-
-        // Map metadata – tags and lastSavedBy are omitted if not persisted.
-        ItineraryDTO.MetadataDTO meta = new ItineraryDTO.MetadataDTO();
-        meta.setLanguage(itinerary.getLanguage());
-        meta.setIsTemplate(itinerary.getIsTemplate());
-        meta.setVersion(itinerary.getVersion());
-        dto.setMetadata(meta);
-
-        return dto;
     }
 
     // Maps a new Itinerary from a DTO (used for create)
     public Itinerary toEntity(ItineraryDTO dto) {
-        if (dto == null) return null;
+        log.info("Starting mapping of ItineraryDTO to Itinerary entity");
+        if (dto == null) {
+            log.warn("Provided ItineraryDTO is null. Returning null entity.");
+            return null;
+        }
         Itinerary model = new Itinerary();
         if (dto.getId() != null) {
             model.setId(dto.getId());
-        }else{
+        } else {
             model.setId(UUID.randomUUID());
+            log.debug("Generated new UUID for Itinerary: {}", model.getId());
         }
         model.setUserId(dto.getUserId());
         model.setTitle(dto.getTitle());
@@ -233,6 +266,7 @@ public class ItineraryMapper {
 
         // Map trip details
         if (dto.getTripDetails() != null) {
+            log.debug("Mapping trip details from DTO");
             if (dto.getTripDetails().getDestination() != null) {
                 model.setDestinationName(dto.getTripDetails().getDestination().getName());
                 if (dto.getTripDetails().getDestination().getCoordinates() != null) {
@@ -245,6 +279,7 @@ public class ItineraryMapper {
             model.setEndDate(dto.getTripDetails().getEndDate());
 
             if (dto.getTripDetails().getBudget() != null) {
+                log.debug("Mapping budget details from DTO");
                 Budget budget = new Budget();
                 budget.setCurrency(dto.getTripDetails().getBudget().getCurrency());
                 budget.setTotalAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getTotal()));
@@ -261,6 +296,7 @@ public class ItineraryMapper {
 
         // Map days and their nested sections
         if (dto.getDays() != null) {
+            log.debug("Mapping {} days from DTO to entity", dto.getDays().size());
             List<Day> days = new ArrayList<>();
             dto.getDays().forEach(dayDto -> {
                 Day day = mapDaySectionsAndTravel(new Day(), dayDto);
@@ -272,6 +308,7 @@ public class ItineraryMapper {
 
         // Map sharedWith into SharedAccess
         if (dto.getSharedWith() != null) {
+            log.debug("Mapping shared access from DTO");
             List<SharedAccess> sharedList = new ArrayList<>();
             dto.getSharedWith().forEach(s -> {
                 SharedAccess sa = new SharedAccess();
@@ -287,16 +324,19 @@ public class ItineraryMapper {
 
         // Map metadata
         if (dto.getMetadata() != null) {
+            log.debug("Mapping metadata from DTO");
             model.setIsTemplate(dto.getMetadata().getIsTemplate());
             model.setLanguage(dto.getMetadata().getLanguage());
             model.setVersion(dto.getMetadata().getVersion());
         }
 
+        log.info("Completed mapping of ItineraryDTO to Itinerary entity with id: {}", model.getId());
         return model;
     }
 
     // Helper method to update an existing Itinerary with values from a DTO.
     public void updateEntity(Itinerary existing, ItineraryDTO dto) {
+        log.info("Updating existing Itinerary id: {} with new DTO data", existing.getId());
         // Only update basic fields if provided
         if (dto.getTitle() != null) {
             existing.setTitle(dto.getTitle());
@@ -308,12 +348,10 @@ public class ItineraryMapper {
             existing.setVisibility(dto.getVisibility());
         }
         // Do not update userId if not provided, as it’s the owner identifier
-//        if (dto.getUserId() != null) {
-//            existing.setUserId(dto.getUserId());
-//        }
 
         // Update trip details if provided
         if (dto.getTripDetails() != null) {
+            log.debug("Updating trip details for Itinerary id: {}", existing.getId());
             if (dto.getTripDetails().getDestination() != null) {
                 if (dto.getTripDetails().getDestination().getName() != null) {
                     existing.setDestinationName(dto.getTripDetails().getDestination().getName());
@@ -332,6 +370,7 @@ public class ItineraryMapper {
                 existing.setEndDate(dto.getTripDetails().getEndDate());
             }
             if (dto.getTripDetails().getBudget() != null && dto.getTripDetails().getBudget().getBreakdown() != null) {
+                log.debug("Updating budget details for Itinerary id: {}", existing.getId());
                 if (existing.getBudget() == null) {
                     Budget budget = new Budget();
                     budget.setItinerary(existing);
@@ -349,8 +388,8 @@ public class ItineraryMapper {
         }
 
         // For days, here we choose to replace the entire collection.
-        // In production, you might consider merging per-day by matching ids.
         if (dto.getDays() != null) {
+            log.debug("Replacing days for Itinerary id: {}", existing.getId());
             existing.getDays().clear();
             List<Day> updatedDays = dto.getDays().stream().map(dayDto -> {
                 Day day = mapDaySectionsAndTravel(new Day(), dayDto);
@@ -362,6 +401,7 @@ public class ItineraryMapper {
 
         // Replace sharedWith collection if provided
         if (dto.getSharedWith() != null) {
+            log.debug("Replacing shared access for Itinerary id: {}", existing.getId());
             existing.getSharedAccess().clear();
             List<SharedAccess> shared = dto.getSharedWith().stream().map(s -> {
                 SharedAccess sa = new SharedAccess();
@@ -377,15 +417,17 @@ public class ItineraryMapper {
 
         // Update metadata if provided
         if (dto.getMetadata() != null) {
+            log.debug("Updating metadata for Itinerary id: {}", existing.getId());
             existing.setIsTemplate(dto.getMetadata().getIsTemplate());
             existing.setLanguage(dto.getMetadata().getLanguage());
             existing.setVersion(dto.getMetadata().getVersion());
         }
+        log.info("Completed update of Itinerary id: {}", existing.getId());
     }
-
 
     // Helper: map a day (including sections and travel routes) from its DTO.
     private Day mapDaySectionsAndTravel(Day day, ItineraryDTO.DayDTO dayDto) {
+        log.info("Mapping DayDTO to Day entity; DayDTO id: {}", dayDto.getId());
         if (dayDto.getId() != null) {
             day.setId(UUID.fromString(dayDto.getId()));
         }
@@ -402,8 +444,10 @@ public class ItineraryMapper {
         // Map activities/sections
         List<Activity> allActivities = new ArrayList<>();
         if (dayDto.getSections() != null) {
+            log.debug("Mapping sections for Day id: {}", day.getId());
             // Map hotels
             if (dayDto.getSections().getHotels() != null) {
+                log.debug("Mapping hotels for Day id: {}", day.getId());
                 dayDto.getSections().getHotels().forEach(hotelDto -> {
                     Activity act = new Activity();
                     act.setDay(day);
@@ -426,7 +470,7 @@ public class ItineraryMapper {
                     }
                     if (hotelDto.getPhotos() != null) {
                         hotelDto.getPhotos().forEach(photoDto -> {
-                            if(photoDto != null) {
+                            if (photoDto != null) {
                                 Photo photo = new Photo();
                                 photo.setUrl(photoDto.getUrl());
                                 photo.setCaption(photoDto.getCaption());
@@ -438,23 +482,24 @@ public class ItineraryMapper {
                     }
                     if (hotelDto.getOperatingHours() != null && hotelDto.getOperatingHours().getPeriods() != null) {
                         hotelDto.getOperatingHours().getPeriods().forEach(periodDto -> {
-                            //todo--> is open or close(isOpen) variable
                             OperatingHours oh = new OperatingHours();
-                                    if(periodDto != null) {
-                                        oh.setDayOfWeek(periodDto.getDay());
-
-                                        if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                            String[] times = periodDto.getHours().split("-");
-                                            oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                            oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                                        } else {
-                                            //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
-                                            oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
-                                            oh.setCloseTime(LocalTime.of(23, 59, 0));
-                                        }
-                                        oh.setPlace(p);
-                                        p.getOperatingHours().add(oh);
+                            if (periodDto != null) {
+                                oh.setDayOfWeek(periodDto.getDay());
+                                if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                    String[] times = periodDto.getHours().split("-");
+                                    try {
+                                        oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                        oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                    } catch (Exception e) {
+                                        log.error("Error parsing operating hours for hotel: {}", e.getMessage());
                                     }
+                                } else {
+                                    oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
+                                    oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                }
+                                oh.setPlace(p);
+                                p.getOperatingHours().add(oh);
+                            }
                         });
                     }
                     act.setPlace(p);
@@ -479,6 +524,7 @@ public class ItineraryMapper {
 
             // Map activities
             if (dayDto.getSections().getActivities() != null) {
+                log.debug("Mapping activities for Day id: {}", day.getId());
                 dayDto.getSections().getActivities().forEach(activityDto -> {
                     Activity act = new Activity();
                     act.setDay(day);
@@ -500,7 +546,7 @@ public class ItineraryMapper {
                     }
                     if (activityDto.getPhotos() != null) {
                         activityDto.getPhotos().forEach(photoDto -> {
-                            if(photoDto != null) {
+                            if (photoDto != null) {
                                 Photo photo = new Photo();
                                 photo.setUrl(photoDto.getUrl());
                                 photo.setCaption(photoDto.getCaption());
@@ -512,22 +558,24 @@ public class ItineraryMapper {
                     }
                     if (activityDto.getOperatingHours() != null && activityDto.getOperatingHours().getPeriods() != null) {
                         activityDto.getOperatingHours().getPeriods().forEach(periodDto -> {
-                            //todo--> is open or close(isOpen) variable
-                            OperatingHours oh = new OperatingHours();
-
-                            oh.setDayOfWeek(periodDto.getDay());
-
-                            if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                String[] times = periodDto.getHours().split("-");
-                                oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                            }else{
-                                //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
-                                oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
-                                oh.setCloseTime(LocalTime.of(23, 59, 0));
+                            if (periodDto != null) {
+                                OperatingHours oh = new OperatingHours();
+                                oh.setDayOfWeek(periodDto.getDay());
+                                if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                    String[] times = periodDto.getHours().split("-");
+                                    try {
+                                        oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                        oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                    } catch (Exception e) {
+                                        log.error("Error parsing operating hours for activity: {}", e.getMessage());
+                                    }
+                                } else {
+                                    oh.setOpenTime(LocalTime.of(0, 0, 0));
+                                    oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                }
+                                oh.setPlace(p);
+                                p.getOperatingHours().add(oh);
                             }
-                            oh.setPlace(p);
-                            p.getOperatingHours().add(oh);
                         });
                     }
                     act.setPlace(p);
@@ -552,6 +600,7 @@ public class ItineraryMapper {
 
             // Map restaurants
             if (dayDto.getSections().getRestaurants() != null) {
+                log.debug("Mapping restaurants for Day id: {}", day.getId());
                 dayDto.getSections().getRestaurants().forEach(restDto -> {
                     Activity act = new Activity();
                     act.setDay(day);
@@ -573,7 +622,7 @@ public class ItineraryMapper {
                     }
                     if (restDto.getPhotos() != null) {
                         restDto.getPhotos().forEach(photoDto -> {
-                            if(photoDto != null) {
+                            if (photoDto != null) {
                                 Photo photo = new Photo();
                                 photo.setUrl(photoDto.getUrl());
                                 photo.setCaption(photoDto.getCaption());
@@ -583,26 +632,25 @@ public class ItineraryMapper {
                             }
                         });
                     }
-                    if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods().size() > 0) {
+                    if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods() != null) {
                         restDto.getOperatingHours().getPeriods().forEach(periodDto -> {
-
-                            //todo--> is open or close(isOpen) variable
                             OperatingHours oh = new OperatingHours();
-
-                            if(periodDto != null) {
+                            if (periodDto != null) {
                                 oh.setDayOfWeek(periodDto.getDay());
-                            if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                String[] times = periodDto.getHours().split("-");
-                                oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                            }else{
-                                //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
-                                oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
-                                oh.setCloseTime(LocalTime.of(23, 59, 0));
-                            }
-
-                            oh.setPlace(p);
-                            p.getOperatingHours().add(oh);
+                                if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                    String[] times = periodDto.getHours().split("-");
+                                    try {
+                                        oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                        oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                    } catch (Exception e) {
+                                        log.error("Error parsing operating hours for restaurant: {}", e.getMessage());
+                                    }
+                                } else {
+                                    oh.setOpenTime(LocalTime.of(0, 0, 0));
+                                    oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                }
+                                oh.setPlace(p);
+                                p.getOperatingHours().add(oh);
                             }
                         });
                     }
@@ -628,45 +676,8 @@ public class ItineraryMapper {
         }
         day.setActivities(allActivities);
 
-        // Map travel routes into TravelRoute entities:
-//        if(dayDto.getTravelInfo() != null && dayDto.getTravelInfo().getRoutes() != null) {
-//            List<TravelRoute> routes = new ArrayList<>();
-//            for (ItineraryDTO.RouteDTO routeDto : dayDto.getTravelInfo().getRoutes()) {
-//                TravelRoute tr = new TravelRoute();
-//                tr.setDay(day);
-//                tr.setDistance(routeDto.getDistance());
-//                tr.setDuration(routeDto.getDuration());
-//                tr.setTravelMode(dayDto.getTravelInfo().getMode());
-//                tr.setPolyline(routeDto.getPolyline());
-//                tr.setCreatedAt(LocalDateTime.now());
-//                // Find matching from and to activities based on Place.id
-//                Activity fromAct = null;
-//                Activity toAct = null;
-//                for (Activity act : day.getActivities()) {
-//                    if (act.getPlace() != null && act.getPlace().getId() != null) {
-//                        String placeId = act.getPlace().getId().toString();
-//                        if(placeId.equals(routeDto.getFrom())) {
-//                            fromAct = act;
-//                        }
-//                        if(placeId.equals(routeDto.getTo())) {
-//                            toAct = act;
-//                        }
-//                    }
-//                }
-//                if(fromAct == null || toAct == null) {
-//                    throw new RuntimeException("Cannot find matching activity for travel route: from='"
-//                            + routeDto.getFrom() + "', to='" + routeDto.getTo() + "'");
-//                }
-//                tr.setFromActivity(fromAct);
-//                tr.setToActivity(toAct);
-//                routes.add(tr);
-//            }
-//            day.setTravelRoutes(routes);
-//        }
+        // Travel routes mapping commented out in original code.
+        log.info("Completed mapping of DayDTO to Day entity; Day id: {}", day.getId());
         return day;
     }
-
-
-
-
 }

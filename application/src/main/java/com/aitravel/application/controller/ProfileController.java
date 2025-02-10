@@ -19,12 +19,17 @@ public class ProfileController {
     public ResponseEntity<ProfileResponseDTO> saveProfile(
             @PathVariable String userId,
             @RequestBody ProfileRequestDTO profileRequest) {
-        return ResponseEntity.ok(profileService.saveProfile(userId, profileRequest));
+        log.info("Received request to save profile for userId: {}", userId);
+        ProfileResponseDTO response = profileService.saveProfile(userId, profileRequest);
+        log.info("Profile saved successfully for userId: {}", userId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<ProfileResponseDTO> getProfile(@PathVariable String userId) {
-        return ResponseEntity.ok(profileService.getProfile(userId));
+        log.info("Received request to get profile for userId: {}", userId);
+        ProfileResponseDTO response = profileService.getProfile(userId);
+        log.info("Retrieved profile for userId: {}", userId);
+        return ResponseEntity.ok(response);
     }
 }
-

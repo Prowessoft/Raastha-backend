@@ -2,6 +2,7 @@ package com.aitravel.application.config;
 
 import com.aitravel.application.repositoryjpa.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,33 +22,41 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
     private final UserRepository userRepository;
-
     private final CustomUserDetailsService customUserDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        log.info("Initializing SecurityFilterChain bean");
         http
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/itinerary/**").permitAll()
-                        .requestMatchers("/api/itineraries/**").permitAll()
-                        .requestMatchers("/api/profiles/**").permitAll()
-                        .anyRequest().authenticated()
-                )
+                .csrf(csrf -> {
+                    log.debug("Disabling CSRF protection");
+                    csrf.disable();
+                })
+                .authorizeHttpRequests(auth -> {
+                    log.debug("Configuring authorization requests");
+                    auth.requestMatchers("/api/auth/**").permitAll()
+                            .requestMatchers("/api/itinerary/**").permitAll()
+                            .requestMatchers("/api/itineraries/**").permitAll()
+                            .requestMatchers("/api/profiles/**").permitAll()
+                            .anyRequest().authenticated();
+                })
                 .httpBasic(Customizer.withDefaults())
-                .cors(cors-> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> {
+                    log.debug("Enabling CORS configuration");
+                    cors.configurationSource(corsConfigurationSource());
+                })
                 .userDetailsService(customUserDetailsService);
 
-
+        log.info("SecurityFilterChain bean initialized successfully");
         return http.build();
-
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        log.info("Initializing CorsConfigurationSource bean");
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("*")); // Allow all origins
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -55,16 +64,21 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
+        log.info("CorsConfigurationSource bean configured successfully");
         return source;
     }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
+        log.info("Initializing PasswordEncoder bean using BCryptPasswordEncoder");
         return new BCryptPasswordEncoder();
     }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+        log.info("Initializing AuthenticationManager bean");
+        AuthenticationManager manager = config.getAuthenticationManager();
+        log.info("AuthenticationManager bean initialized successfully");
+        return manager;
     }
 }
-

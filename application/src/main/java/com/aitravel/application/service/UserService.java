@@ -13,7 +13,6 @@ import com.aitravel.application.repositoryjpa.ProfileRepository;
 import com.aitravel.application.repositoryjpa.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +21,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -34,16 +34,23 @@ public class UserService {
     private final ProfileRepository profileRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+
     @PersistenceContext
     private EntityManager entityManager;  // Inject EntityManager
 
     @Transactional
     public UserAuthResponse signup(UserRequestDTO request) {
-        // Check if user already exists
+        log.info("Received signup request for user with email: {}", request.getEmail());
+
+        // Check if user already exists based on name
         if (userRepository.existsByName(request.getName())) {
+            log.error("Signup failed: User with name '{}' already exists.", request.getName());
             throw new UserAlreadyExistsException("User with name '" + request.getName() + "' already exists.");
         }
+
+        // Check if user already exists based on email
         if (userRepository.existsByEmail(request.getEmail())) {
+            log.error("Signup failed: User with email '{}' already exists.", request.getEmail());
             throw new UserAlreadyExistsException("User with email '" + request.getEmail() + "' already exists.");
         }
 
@@ -56,14 +63,15 @@ public class UserService {
                 .avatarImgUrl(request.getAvatarImgUrl())
                 .build();
 
-        log.info("Saving user: {}", user.getEmail());
+        log.info("Saving new user with email: {}", user.getEmail());
         User savedUser = userRepository.save(user);
-        log.info("User saved with ID: {}", savedUser.getUserId());
+        log.info("User saved successfully with ID: {}", savedUser.getUserId());
 
-        // Re-attach the saved user to the persistence context
+        // Re-attach the saved user to the persistence context for further operations
         User attachedUser = entityManager.merge(savedUser);
+        log.debug("User re-attached to persistence context with ID: {}", attachedUser.getUserId());
 
-        // Create profile
+        // Create profile for the new user
         Profile profile = Profile.builder()
                 .userId(attachedUser.getUserId())  // Use the attached user's ID
                 .user(attachedUser)  // Set the attached user reference
@@ -92,10 +100,10 @@ public class UserService {
                 .build();
     }
 
-
     public UserAuthResponse login(LoginRequest request) {
+        log.info("Received login request for email: {}", request.getEmail());
         try {
-            // Authenticate using email
+            // Authenticate using email and password
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
@@ -106,8 +114,7 @@ public class UserService {
             if (authentication.isAuthenticated()) {
                 CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
                 User user = userDetails.getUser();
-
-                log.info("User logged in: {}", user.getEmail());
+                log.info("User logged in successfully: {}", user.getEmail());
                 return UserAuthResponse.builder()
                         .userId(user.getUserId())
                         .message("Login successful")
@@ -115,10 +122,11 @@ public class UserService {
                         .name(user.getName())
                         .build();
             } else {
+                log.error("Authentication failed for email: {}. Invalid email or password.", request.getEmail());
                 throw new AuthenticationFailedException("Invalid email or password.");
             }
         } catch (AuthenticationException e) {
-            log.error("Authentication failure for user {}: {}", request.getEmail(), e.getMessage());
+            log.error("Authentication error for email: {}: {}", request.getEmail(), e.getMessage());
             throw new AuthenticationFailedException("Invalid email or password.");
         }
     }
@@ -126,8 +134,9 @@ public class UserService {
     public User getUserDetails(String userId) {
         log.info("Fetching user details for user ID: {}", userId);
         return userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User with ID '" + userId + "' not found."));
+                .orElseThrow(() -> {
+                    log.error("User not found with ID: {}", userId);
+                    return new UserNotFoundException("User with ID '" + userId + "' not found.");
+                });
     }
 }
-
-
