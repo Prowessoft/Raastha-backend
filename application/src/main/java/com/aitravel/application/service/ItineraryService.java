@@ -6,7 +6,7 @@ import com.aitravel.application.exceptions.ResourceNotFoundException;
 import com.aitravel.application.model.Itinerary;
 import com.aitravel.application.objectmapper.ItineraryBasicMapper;
 import com.aitravel.application.objectmapper.ItineraryMapper;
-import com.aitravel.application.repository.ItineraryRepository;
+import com.aitravel.application.repositoryjpa.ItineraryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -32,6 +32,11 @@ public class ItineraryService {
     }
 
     public ItineraryDTO createItinerary(ItineraryDTO itineraryDTO) {
+        String success = null;
+        if(itineraryDTO.getId() != null){
+            itineraryRepository.deleteById(itineraryDTO.getId());
+        }
+        itineraryDTO.setId(itineraryDTO.getId());
         Itinerary itinerary = itineraryMapper.toEntity(itineraryDTO);
         itinerary.setCreatedAt(LocalDateTime.now());
         itinerary.setUpdatedAt(LocalDateTime.now());
@@ -70,5 +75,10 @@ public class ItineraryService {
         Itinerary updated = itineraryRepository.save(existing);
         return itineraryMapper.toDTO(updated);
     }
+
+    public void deleteItinerary(UUID itineraryId) {
+        itineraryRepository.deleteById(itineraryId);
+    }
+
 
 }

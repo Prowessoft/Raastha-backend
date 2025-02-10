@@ -22,7 +22,7 @@ public class OperatingHours {
     private Place place;
 
     @Column(name = "day_of_week", nullable = false)
-    private Integer dayOfWeek; // 0=Sunday, 1=Monday, etc.
+    private String dayOfWeek; // 0=Sunday, 1=Monday, etc.
 
     @Column(name = "open_time")
     private LocalTime openTime;

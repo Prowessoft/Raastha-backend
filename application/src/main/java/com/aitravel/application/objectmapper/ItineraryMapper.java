@@ -3,6 +3,8 @@ package com.aitravel.application.objectmapper;
 import com.aitravel.application.dto.ItineraryDTO;
 import com.aitravel.application.model.*;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -17,8 +19,9 @@ public class ItineraryMapper {
     public ItineraryDTO toDTO(Itinerary itinerary) {
         if (itinerary == null) return null;
         ItineraryDTO dto = new ItineraryDTO();
-        dto.setId(itinerary.getId().toString());
+        dto.setId(itinerary.getId());
         dto.setUserId(itinerary.getUserId());
+        dto.setTripImg(itinerary.getTripImg());
         dto.setTitle(itinerary.getTitle());
         dto.setStatus(itinerary.getStatus());
         dto.setVisibility(itinerary.getVisibility());
@@ -129,10 +132,11 @@ public class ItineraryMapper {
                             act.getPlace().getOperatingHours().forEach(oh -> {
                                 ItineraryDTO.OperatingPeriodDTO opdto = new ItineraryDTO.OperatingPeriodDTO();
                                 // Optionally convert numeric day to text (e.g., 1 -> Monday)
-                                opdto.setDay(String.valueOf(oh.getDayOfWeek()));
+                                opdto.setDay(oh.getDayOfWeek());
                                 opdto.setHours(oh.getOpenTime() + "-" + oh.getCloseTime());
                                 periods.add(opdto);
                             });
+                            // todo need to implement some logic here for isOpen
                             ohDTO.setIsOpen(true); // You can derive this according to your business rules.
                             ohDTO.setPeriods(periods);
                             pdto.setOperatingHours(ohDTO);
@@ -214,11 +218,15 @@ public class ItineraryMapper {
     public Itinerary toEntity(ItineraryDTO dto) {
         if (dto == null) return null;
         Itinerary model = new Itinerary();
-        if (dto.getId() != null)
-            model.setId(UUID.fromString(dto.getId()));
+        if (dto.getId() != null) {
+            model.setId(dto.getId());
+        }else{
+            model.setId(UUID.randomUUID());
+        }
         model.setUserId(dto.getUserId());
         model.setTitle(dto.getTitle());
         model.setStatus(dto.getStatus());
+        model.setTripImg(dto.getTripImg());
         model.setVisibility(dto.getVisibility());
         model.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
         model.setUpdatedAt(LocalDateTime.now());
@@ -428,16 +436,19 @@ public class ItineraryMapper {
                     }
                     if (hotelDto.getOperatingHours() != null && hotelDto.getOperatingHours().getPeriods() != null) {
                         hotelDto.getOperatingHours().getPeriods().forEach(periodDto -> {
+                            //todo--> is open or close(isOpen) variable
                             OperatingHours oh = new OperatingHours();
-                            try {
-                                oh.setDayOfWeek(Integer.parseInt(periodDto.getDay()));
-                            } catch (NumberFormatException e) {
-                                oh.setDayOfWeek(1);
-                            }
+
+                                oh.setDayOfWeek(periodDto.getDay());
+
                             if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
                                 String[] times = periodDto.getHours().split("-");
                                 oh.setOpenTime(LocalTime.parse(times[0].trim()));
                                 oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                            }else{
+                                //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
+                                oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
+                                oh.setCloseTime(LocalTime.of(23, 59, 0));
                             }
                             oh.setPlace(p);
                             p.getOperatingHours().add(oh);
@@ -494,6 +505,26 @@ public class ItineraryMapper {
                             p.getPhotos().add(photo);
                         });
                     }
+                    if (activityDto.getOperatingHours() != null && activityDto.getOperatingHours().getPeriods() != null) {
+                        activityDto.getOperatingHours().getPeriods().forEach(periodDto -> {
+                            //todo--> is open or close(isOpen) variable
+                            OperatingHours oh = new OperatingHours();
+
+                            oh.setDayOfWeek(periodDto.getDay());
+
+                            if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                String[] times = periodDto.getHours().split("-");
+                                oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                            }else{
+                                //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
+                                oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
+                                oh.setCloseTime(LocalTime.of(23, 59, 0));
+                            }
+                            oh.setPlace(p);
+                            p.getOperatingHours().add(oh);
+                        });
+                    }
                     act.setPlace(p);
                     if (activityDto.getStartTime() != null)
                         act.setStartTime(LocalTime.parse(activityDto.getStartTime()));
@@ -543,6 +574,26 @@ public class ItineraryMapper {
                             photo.setCreatedAt(LocalDateTime.now());
                             photo.setPlace(p);
                             p.getPhotos().add(photo);
+                        });
+                    }
+                    if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods() != null) {
+                        restDto.getOperatingHours().getPeriods().forEach(periodDto -> {
+                            //todo--> is open or close(isOpen) variable
+                            OperatingHours oh = new OperatingHours();
+
+                            oh.setDayOfWeek(periodDto.getDay());
+
+                            if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                String[] times = periodDto.getHours().split("-");
+                                oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                            }else{
+                                //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
+                                oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
+                                oh.setCloseTime(LocalTime.of(23, 59, 0));
+                            }
+                            oh.setPlace(p);
+                            p.getOperatingHours().add(oh);
                         });
                     }
                     act.setPlace(p);

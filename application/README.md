@@ -140,3 +140,55 @@ places → operating_hours & photos: One-to-many (a place can have several opera
 days → travel_routes: One-to-many (each day can involve multiple travel legs).
 itineraries → shared_access: One-to-many (an itinerary can be shared with multiple users).
 itineraries → itinerary_tags → tags: Many-to-many (for metadata categorization).
+
+
+---------------------------------------------------------------------------------------------------------------------------
+
+Delete Operation on Our Applications
+
+Below is a review of your entities and whether cascading (and orphanRemoval) is configured to remove all nested data when an Itinerary is deleted:
+
+
+Itinerary
+You have a OneToOne relationship with Budget using cascade = ALL.
+Although orphanRemoval isn’t set on Budget, when you delete an Itinerary the cascade REMOVE should delete the associated Budget record. (You might consider adding orphanRemoval if you ever “orphan” a budget by disassociating it from an itinerary.)
+The OneToMany collections (days and sharedAccess) are declared with cascade = ALL and orphanRemoval = true.
+This means that all Day and SharedAccess records linked to the Itinerary will be automatically removed on deletion.
+
+Day
+In the Day entity you have two OneToMany associations: one for activities and one for travelRoutes. Both are declared with cascade = ALL and orphanRemoval = true.
+When a Day is deleted (via cascading from the Itinerary), all its associated Activities and TravelRoutes will be removed as well.
+
+Budget
+ The Budget entity is mapped with a ManyToOne to the Itinerary, and deletion of the Itinerary (with cascade = ALL defined on the OneToOne in Itinerary) should remove the Budget.
+ As noted, you might add orphanRemoval = true for added safety if you will ever disassociate a Budget without deleting the Itinerary.
+
+SharedAccess
+ SharedAccess is a OneToMany on the Itinerary with cascade = ALL and orphanRemoval = true.
+ This ensures that any SharedAccess entries for a given Itinerary are deleted when the Itinerary is removed.
+
+Activity
+ Activity is linked to the Day (ManyToOne without cascading there, because essentially the Day owns the relationship) and to Place (ManyToOne with cascade ALL).
+ Note: Deleting the Day (via its parent Itinerary) will cascade to the Activity.
+ It also embeds BookingInfo, which is not an entity by itself, so no cascade consideration is required there.
+
+Place
+ Place has OneToMany relationships for photos and operatingHours, both with cascade = ALL and orphanRemoval = true.
+ If a Place is removed (for example, if an Activity is deleted and the associated Place is no longer referenced elsewhere and gets removed by your application logic), its photos and operatingHours will be deleted.
+ In your deletion cascade from Itinerary, Places are reached via Activities. Typically, Places might be shared across activities; if that is the case, make sure your business logic handles that (cascading remove from Activity will remove the Place only if it isn’t referenced elsewhere).
+
+
+In summary, when you delete an Itinerary:
+ The associated Budget (via cascade ALL) will be removed.
+
+• All Days belonging to the Itinerary (with orphanRemoval = true) will be deleted.
+
+– And within each Day, all Activities and TravelRoutes (each with cascade = ALL and orphanRemoval = true) will be deleted.
+
+• SharedAccess entries will also be removed.
+
+
+Thus, your cascade settings and orphanRemoval configurations (for Days, SharedAccess, Activities, TravelRoutes, Place’s photos, and operatingHours) ensure that when an Itinerary is deleted, all nested (orphaned) data is removed according to your design.
+
+
+So yes, based on the entities you provided, the deletion cascade should work as expected.

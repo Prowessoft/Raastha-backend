@@ -1,7 +1,7 @@
 package com.aitravel.application.config;
 
 import com.aitravel.application.model.User;
-import com.aitravel.application.repository.UserRepository;
+import com.aitravel.application.repositoryjpa.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

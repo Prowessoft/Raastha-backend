@@ -1,7 +1,7 @@
 package com.aitravel.application.service;
 
 import com.aitravel.application.model.NewsLetter;
-import com.aitravel.application.repository.NewsLetterRepository;
+import com.aitravel.application.repositoryjpa.NewsLetterRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

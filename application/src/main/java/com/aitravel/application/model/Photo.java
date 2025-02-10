@@ -19,7 +19,7 @@ public class Photo {
     @JoinColumn(name="place_id", nullable=false)
     private Place place;
 
-    @Column(nullable=false)
+    @Column(nullable=false, length = 500)
     private String url;
     private String caption;
 

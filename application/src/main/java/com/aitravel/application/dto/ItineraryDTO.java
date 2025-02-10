@@ -4,13 +4,16 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 
 @Data
 public class ItineraryDTO {
-    private String id;
+    private UUID id;
     private String userId;
     private String title;
+
+    private String tripImg;
     private String status;
     private String visibility;
     private LocalDateTime createdAt;

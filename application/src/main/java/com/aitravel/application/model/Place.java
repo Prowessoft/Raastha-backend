@@ -20,7 +20,7 @@ public class Place {
     @Column(name="google_place_id", unique=true)
     private String googlePlaceId;
 
-    @Column(nullable=false)
+    @Column(name="name", nullable=false)
     private String name;
     private String description;
     private String address;

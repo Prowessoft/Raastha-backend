@@ -15,13 +15,15 @@ import java.util.UUID;
 @Table(name = "itineraries")
 public class Itinerary {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+  /*  @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")*/
     private UUID id;
 
     // userId stored as String (VARCHAR(32))
     @Column(name = "user_id", nullable = false, length = 32)
     private String userId;
+    @Column(name = "trip_img", nullable = false, length = 500)
+    private String tripImg;
 
     private String title;
     private String status;
