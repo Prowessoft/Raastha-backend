@@ -4,7 +4,6 @@ import com.aitravel.application.dto.ItineraryDTO;
 import com.aitravel.application.model.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -235,9 +234,8 @@ public class ItineraryMapper {
 
             log.info("Completed mapping of Itinerary id: {} to ItineraryDTO", itinerary.getId());
             return dto;
-        }
-        catch (Exception e){
-            log.error("Exception when it converting to DTO: " +e);
+        } catch (Exception e) {
+            log.error("Exception when it converting to DTO: " + e);
             return null;
         }
     }
@@ -245,439 +243,453 @@ public class ItineraryMapper {
     // Maps a new Itinerary from a DTO (used for create)
     public Itinerary toEntity(ItineraryDTO dto) {
         log.info("Starting mapping of ItineraryDTO to Itinerary entity");
-        if (dto == null) {
-            log.warn("Provided ItineraryDTO is null. Returning null entity.");
-            return null;
-        }
-        Itinerary model = new Itinerary();
-        if (dto.getId() != null) {
-            model.setId(dto.getId());
-        } else {
-            model.setId(UUID.randomUUID());
-            log.debug("Generated new UUID for Itinerary: {}", model.getId());
-        }
-        model.setUserId(dto.getUserId());
-        model.setTitle(dto.getTitle());
-        model.setStatus(dto.getStatus());
-        model.setTripImg(dto.getTripImg());
-        model.setVisibility(dto.getVisibility());
-        model.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
-        model.setUpdatedAt(LocalDateTime.now());
+        try {
+            if (dto == null) {
+                log.warn("Provided ItineraryDTO is null. Returning null entity.");
+                return null;
+            }
+            Itinerary model = new Itinerary();
+            if (dto.getId() != null) {
+                model.setId(dto.getId());
+            } else {
+                model.setId(UUID.randomUUID());
+                log.debug("Generated new UUID for Itinerary: {}", model.getId());
+            }
+            model.setUserId(dto.getUserId());
+            model.setTitle(dto.getTitle());
+            model.setStatus(dto.getStatus());
+            model.setTripImg(dto.getTripImg());
+            model.setVisibility(dto.getVisibility());
+            model.setCreatedAt(dto.getCreatedAt() != null ? dto.getCreatedAt() : LocalDateTime.now());
+            model.setUpdatedAt(LocalDateTime.now());
 
-        // Map trip details
-        if (dto.getTripDetails() != null) {
-            log.debug("Mapping trip details from DTO");
-            if (dto.getTripDetails().getDestination() != null) {
-                model.setDestinationName(dto.getTripDetails().getDestination().getName());
-                if (dto.getTripDetails().getDestination().getCoordinates() != null) {
-                    String coordStr = String.join(",", dto.getTripDetails().getDestination().getCoordinates()
-                            .stream().map(Object::toString).toArray(String[]::new));
-                    model.setDestinationCoordinates(coordStr);
+            // Map trip details
+            if (dto.getTripDetails() != null) {
+                log.debug("Mapping trip details from DTO");
+                if (dto.getTripDetails().getDestination() != null) {
+                    model.setDestinationName(dto.getTripDetails().getDestination().getName());
+                    if (dto.getTripDetails().getDestination().getCoordinates() != null) {
+                        String coordStr = String.join(",", dto.getTripDetails().getDestination().getCoordinates()
+                                .stream().map(Object::toString).toArray(String[]::new));
+                        model.setDestinationCoordinates(coordStr);
+                    }
+                }
+                model.setStartDate(dto.getTripDetails().getStartDate());
+                model.setEndDate(dto.getTripDetails().getEndDate());
+
+                if (dto.getTripDetails().getBudget() != null) {
+                    log.debug("Mapping budget details from DTO");
+                    Budget budget = new Budget();
+                    budget.setCurrency(dto.getTripDetails().getBudget().getCurrency());
+                    budget.setTotalAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getTotal()));
+                    budget.setAccommodationAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getAccommodation()));
+                    budget.setActivitiesAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getActivities()));
+                    budget.setDiningAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getDining()));
+                    budget.setTransportAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getTransport()));
+                    budget.setCreatedAt(LocalDateTime.now());
+                    budget.setUpdatedAt(LocalDateTime.now());
+                    budget.setItinerary(model);
+                    model.setBudget(budget);
                 }
             }
-            model.setStartDate(dto.getTripDetails().getStartDate());
-            model.setEndDate(dto.getTripDetails().getEndDate());
 
-            if (dto.getTripDetails().getBudget() != null) {
-                log.debug("Mapping budget details from DTO");
-                Budget budget = new Budget();
-                budget.setCurrency(dto.getTripDetails().getBudget().getCurrency());
-                budget.setTotalAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getTotal()));
-                budget.setAccommodationAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getAccommodation()));
-                budget.setActivitiesAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getActivities()));
-                budget.setDiningAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getDining()));
-                budget.setTransportAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getTransport()));
-                budget.setCreatedAt(LocalDateTime.now());
-                budget.setUpdatedAt(LocalDateTime.now());
-                budget.setItinerary(model);
-                model.setBudget(budget);
+            // Map days and their nested sections
+            if (dto.getDays() != null) {
+                log.debug("Mapping {} days from DTO to entity", dto.getDays().size());
+                List<Day> days = new ArrayList<>();
+                dto.getDays().forEach(dayDto -> {
+                    Day day = mapDaySectionsAndTravel(new Day(), dayDto);
+                    day.setItinerary(model);
+                    days.add(day);
+                });
+                model.setDays(days);
             }
-        }
 
-        // Map days and their nested sections
-        if (dto.getDays() != null) {
-            log.debug("Mapping {} days from DTO to entity", dto.getDays().size());
-            List<Day> days = new ArrayList<>();
-            dto.getDays().forEach(dayDto -> {
-                Day day = mapDaySectionsAndTravel(new Day(), dayDto);
-                day.setItinerary(model);
-                days.add(day);
-            });
-            model.setDays(days);
-        }
+            // Map sharedWith into SharedAccess
+            if (dto.getSharedWith() != null) {
+                log.debug("Mapping shared access from DTO");
+                List<SharedAccess> sharedList = new ArrayList<>();
+                dto.getSharedWith().forEach(s -> {
+                    SharedAccess sa = new SharedAccess();
+                    sa.setUserId(s.getUserId());
+                    sa.setEmail(s.getEmail());
+                    sa.setPermission(s.getPermission());
+                    sa.setCreatedAt(LocalDateTime.now());
+                    sa.setItinerary(model);
+                    sharedList.add(sa);
+                });
+                model.setSharedAccess(sharedList);
+            }
 
-        // Map sharedWith into SharedAccess
-        if (dto.getSharedWith() != null) {
-            log.debug("Mapping shared access from DTO");
-            List<SharedAccess> sharedList = new ArrayList<>();
-            dto.getSharedWith().forEach(s -> {
-                SharedAccess sa = new SharedAccess();
-                sa.setUserId(s.getUserId());
-                sa.setEmail(s.getEmail());
-                sa.setPermission(s.getPermission());
-                sa.setCreatedAt(LocalDateTime.now());
-                sa.setItinerary(model);
-                sharedList.add(sa);
-            });
-            model.setSharedAccess(sharedList);
-        }
+            // Map metadata
+            if (dto.getMetadata() != null) {
+                log.debug("Mapping metadata from DTO");
+                model.setIsTemplate(dto.getMetadata().getIsTemplate());
+                model.setLanguage(dto.getMetadata().getLanguage());
+                model.setVersion(dto.getMetadata().getVersion());
+            }
 
-        // Map metadata
-        if (dto.getMetadata() != null) {
-            log.debug("Mapping metadata from DTO");
-            model.setIsTemplate(dto.getMetadata().getIsTemplate());
-            model.setLanguage(dto.getMetadata().getLanguage());
-            model.setVersion(dto.getMetadata().getVersion());
+            log.info("Completed mapping of ItineraryDTO to Itinerary entity with id: {}", model.getId());
+            return model;
+        } catch (Exception e) {
+            log.error("Exception during mapping DTO to entity: {}", e.getMessage());
+            return null;
         }
-
-        log.info("Completed mapping of ItineraryDTO to Itinerary entity with id: {}", model.getId());
-        return model;
     }
 
     // Helper method to update an existing Itinerary with values from a DTO.
     public void updateEntity(Itinerary existing, ItineraryDTO dto) {
         log.info("Updating existing Itinerary id: {} with new DTO data", existing.getId());
-        // Only update basic fields if provided
-        if (dto.getTitle() != null) {
-            existing.setTitle(dto.getTitle());
-        }
-        if (dto.getStatus() != null) {
-            existing.setStatus(dto.getStatus());
-        }
-        if (dto.getVisibility() != null) {
-            existing.setVisibility(dto.getVisibility());
-        }
-        // Do not update userId if not provided, as it’s the owner identifier
+        try {
+            // Only update basic fields if provided
+            if (dto.getTitle() != null) {
+                existing.setTitle(dto.getTitle());
+            }
+            if (dto.getStatus() != null) {
+                existing.setStatus(dto.getStatus());
+            }
+            if (dto.getVisibility() != null) {
+                existing.setVisibility(dto.getVisibility());
+            }
+            // Do not update userId if not provided, as it’s the owner identifier
 
-        // Update trip details if provided
-        if (dto.getTripDetails() != null) {
-            log.debug("Updating trip details for Itinerary id: {}", existing.getId());
-            if (dto.getTripDetails().getDestination() != null) {
-                if (dto.getTripDetails().getDestination().getName() != null) {
-                    existing.setDestinationName(dto.getTripDetails().getDestination().getName());
+            // Update trip details if provided
+            if (dto.getTripDetails() != null) {
+                log.debug("Updating trip details for Itinerary id: {}", existing.getId());
+                if (dto.getTripDetails().getDestination() != null) {
+                    if (dto.getTripDetails().getDestination().getName() != null) {
+                        existing.setDestinationName(dto.getTripDetails().getDestination().getName());
+                    }
+                    if (dto.getTripDetails().getDestination().getCoordinates() != null) {
+                        String coordStr = String.join(",",
+                                dto.getTripDetails().getDestination().getCoordinates()
+                                        .stream().map(Object::toString).toArray(String[]::new));
+                        existing.setDestinationCoordinates(coordStr);
+                    }
                 }
-                if (dto.getTripDetails().getDestination().getCoordinates() != null) {
-                    String coordStr = String.join(",",
-                            dto.getTripDetails().getDestination().getCoordinates()
-                                    .stream().map(Object::toString).toArray(String[]::new));
-                    existing.setDestinationCoordinates(coordStr);
+                if (dto.getTripDetails().getStartDate() != null) {
+                    existing.setStartDate(dto.getTripDetails().getStartDate());
+                }
+                if (dto.getTripDetails().getEndDate() != null) {
+                    existing.setEndDate(dto.getTripDetails().getEndDate());
+                }
+                if (dto.getTripDetails().getBudget() != null && dto.getTripDetails().getBudget().getBreakdown() != null) {
+                    log.debug("Updating budget details for Itinerary id: {}", existing.getId());
+                    if (existing.getBudget() == null) {
+                        Budget budget = new Budget();
+                        budget.setItinerary(existing);
+                        existing.setBudget(budget);
+                    }
+                    if (dto.getTripDetails().getBudget().getCurrency() != null) {
+                        existing.getBudget().setCurrency(dto.getTripDetails().getBudget().getCurrency());
+                    }
+                    existing.getBudget().setTotalAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getTotal()));
+                    existing.getBudget().setAccommodationAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getAccommodation()));
+                    existing.getBudget().setActivitiesAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getActivities()));
+                    existing.getBudget().setDiningAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getDining()));
+                    existing.getBudget().setTransportAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getTransport()));
                 }
             }
-            if (dto.getTripDetails().getStartDate() != null) {
-                existing.setStartDate(dto.getTripDetails().getStartDate());
-            }
-            if (dto.getTripDetails().getEndDate() != null) {
-                existing.setEndDate(dto.getTripDetails().getEndDate());
-            }
-            if (dto.getTripDetails().getBudget() != null && dto.getTripDetails().getBudget().getBreakdown() != null) {
-                log.debug("Updating budget details for Itinerary id: {}", existing.getId());
-                if (existing.getBudget() == null) {
-                    Budget budget = new Budget();
-                    budget.setItinerary(existing);
-                    existing.setBudget(budget);
-                }
-                if (dto.getTripDetails().getBudget().getCurrency() != null) {
-                    existing.getBudget().setCurrency(dto.getTripDetails().getBudget().getCurrency());
-                }
-                existing.getBudget().setTotalAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getTotal()));
-                existing.getBudget().setAccommodationAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getAccommodation()));
-                existing.getBudget().setActivitiesAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getActivities()));
-                existing.getBudget().setDiningAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getDining()));
-                existing.getBudget().setTransportAmount(BigDecimal.valueOf(dto.getTripDetails().getBudget().getBreakdown().getTransport()));
-            }
-        }
 
-        // For days, here we choose to replace the entire collection.
-        if (dto.getDays() != null) {
-            log.debug("Replacing days for Itinerary id: {}", existing.getId());
-            existing.getDays().clear();
-            List<Day> updatedDays = dto.getDays().stream().map(dayDto -> {
-                Day day = mapDaySectionsAndTravel(new Day(), dayDto);
-                day.setItinerary(existing);
-                return day;
-            }).collect(Collectors.toList());
-            existing.getDays().addAll(updatedDays);
-        }
+            // For days, here we choose to replace the entire collection.
+            if (dto.getDays() != null) {
+                log.debug("Replacing days for Itinerary id: {}", existing.getId());
+                existing.getDays().clear();
+                List<Day> updatedDays = dto.getDays().stream().map(dayDto -> {
+                    Day day = mapDaySectionsAndTravel(new Day(), dayDto);
+                    day.setItinerary(existing);
+                    return day;
+                }).collect(Collectors.toList());
+                existing.getDays().addAll(updatedDays);
+            }
 
-        // Replace sharedWith collection if provided
-        if (dto.getSharedWith() != null) {
-            log.debug("Replacing shared access for Itinerary id: {}", existing.getId());
-            existing.getSharedAccess().clear();
-            List<SharedAccess> shared = dto.getSharedWith().stream().map(s -> {
-                SharedAccess sa = new SharedAccess();
-                sa.setUserId(s.getUserId());
-                sa.setEmail(s.getEmail());
-                sa.setPermission(s.getPermission());
-                sa.setCreatedAt(LocalDateTime.now());
-                sa.setItinerary(existing);
-                return sa;
-            }).collect(Collectors.toList());
-            existing.setSharedAccess(shared);
-        }
+            // Replace sharedWith collection if provided
+            if (dto.getSharedWith() != null) {
+                log.debug("Replacing shared access for Itinerary id: {}", existing.getId());
+                existing.getSharedAccess().clear();
+                List<SharedAccess> shared = dto.getSharedWith().stream().map(s -> {
+                    SharedAccess sa = new SharedAccess();
+                    sa.setUserId(s.getUserId());
+                    sa.setEmail(s.getEmail());
+                    sa.setPermission(s.getPermission());
+                    sa.setCreatedAt(LocalDateTime.now());
+                    sa.setItinerary(existing);
+                    return sa;
+                }).collect(Collectors.toList());
+                existing.setSharedAccess(shared);
+            }
 
-        // Update metadata if provided
-        if (dto.getMetadata() != null) {
-            log.debug("Updating metadata for Itinerary id: {}", existing.getId());
-            existing.setIsTemplate(dto.getMetadata().getIsTemplate());
-            existing.setLanguage(dto.getMetadata().getLanguage());
-            existing.setVersion(dto.getMetadata().getVersion());
+            // Update metadata if provided
+            if (dto.getMetadata() != null) {
+                log.debug("Updating metadata for Itinerary id: {}", existing.getId());
+                existing.setIsTemplate(dto.getMetadata().getIsTemplate());
+                existing.setLanguage(dto.getMetadata().getLanguage());
+                existing.setVersion(dto.getMetadata().getVersion());
+            }
+            log.info("Completed update of Itinerary id: {}", existing.getId());
+        } catch (Exception e) {
+            log.error("Exception during update entity: {}", e.getMessage());
         }
-        log.info("Completed update of Itinerary id: {}", existing.getId());
     }
 
     // Helper: map a day (including sections and travel routes) from its DTO.
     private Day mapDaySectionsAndTravel(Day day, ItineraryDTO.DayDTO dayDto) {
         log.info("Mapping DayDTO to Day entity; DayDTO id: {}", dayDto.getId());
-        if (dayDto.getId() != null) {
-            day.setId(UUID.fromString(dayDto.getId()));
-        }
-        day.setDayNumber(dayDto.getDayNumber());
-        day.setDate(dayDto.getDate());
-        day.setNotes(dayDto.getNotes());
-        if (dayDto.getBudget() != null) {
-            day.setPlannedBudget(BigDecimal.valueOf(dayDto.getBudget().getPlanned()));
-            day.setActualBudget(BigDecimal.valueOf(dayDto.getBudget().getActual()));
-        }
-        day.setCreatedAt(LocalDateTime.now());
-        day.setUpdatedAt(LocalDateTime.now());
-
-        // Map activities/sections
-        List<Activity> allActivities = new ArrayList<>();
-        if (dayDto.getSections() != null) {
-            log.debug("Mapping sections for Day id: {}", day.getId());
-            // Map hotels
-            if (dayDto.getSections().getHotels() != null) {
-                log.debug("Mapping hotels for Day id: {}", day.getId());
-                dayDto.getSections().getHotels().forEach(hotelDto -> {
-                    Activity act = new Activity();
-                    act.setDay(day);
-                    act.setSequenceNumber(1);
-
-                    Place p = new Place();
-                    p.setName(hotelDto.getTitle());
-                    p.setDescription(hotelDto.getDescription());
-                    if (hotelDto.getLocation() != null && hotelDto.getLocation().getCoordinates() != null) {
-                        String coordStr = String.join(",", hotelDto.getLocation().getCoordinates()
-                                .stream().map(Object::toString).toArray(String[]::new));
-                        p.setCoordinates(coordStr);
-                        p.setName(hotelDto.getLocation().getName());
-                    }
-                    p.setPlaceType("hotel");
-                    if (hotelDto.getContact() != null) {
-                        p.setPhone(hotelDto.getContact().getPhone());
-                        p.setWebsite(hotelDto.getContact().getWebsite());
-                        p.setGoogleMapsUrl(hotelDto.getContact().getGoogleMapsUrl());
-                    }
-                    if (hotelDto.getPhotos() != null) {
-                        hotelDto.getPhotos().forEach(photoDto -> {
-                            if (photoDto != null) {
-                                Photo photo = new Photo();
-                                photo.setUrl(photoDto.getUrl());
-                                photo.setCaption(photoDto.getCaption());
-                                photo.setCreatedAt(LocalDateTime.now());
-                                photo.setPlace(p);
-                                p.getPhotos().add(photo);
-                            }
-                        });
-                    }
-                    if (hotelDto.getOperatingHours() != null && hotelDto.getOperatingHours().getPeriods() != null) {
-                        hotelDto.getOperatingHours().getPeriods().forEach(periodDto -> {
-                            OperatingHours oh = new OperatingHours();
-                            if (periodDto != null) {
-                                oh.setDayOfWeek(periodDto.getDay());
-                                if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                    String[] times = periodDto.getHours().split("-");
-                                    try {
-                                        oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                        oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                                    } catch (Exception e) {
-                                        log.error("Error parsing operating hours for hotel: {}", e.getMessage());
-                                    }
-                                } else {
-                                    oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
-                                    oh.setCloseTime(LocalTime.of(23, 59, 0));
-                                }
-                                oh.setPlace(p);
-                                p.getOperatingHours().add(oh);
-                            }
-                        });
-                    }
-                    act.setPlace(p);
-                    if (hotelDto.getStartTime() != null)
-                        act.setStartTime(LocalTime.parse(hotelDto.getStartTime()));
-                    if (hotelDto.getEndTime() != null)
-                        act.setEndTime(LocalTime.parse(hotelDto.getEndTime()));
-                    act.setDuration(hotelDto.getDuration());
-                    act.setPrice(hotelDto.getPrice());
-                    if (hotelDto.getBookingInfo() != null) {
-                        BookingInfo bi = new BookingInfo();
-                        bi.setConfirmationNumber(hotelDto.getBookingInfo().getConfirmationNumber());
-                        bi.setReservationNumber(hotelDto.getBookingInfo().getReservationNumber());
-                        bi.setNotes(hotelDto.getBookingInfo().getNotes());
-                        act.setBookingInfo(bi);
-                    }
-                    act.setCreatedAt(LocalDateTime.now());
-                    act.setUpdatedAt(LocalDateTime.now());
-                    allActivities.add(act);
-                });
+        try {
+            if (dayDto.getId() != null) {
+                day.setId(UUID.fromString(dayDto.getId()));
             }
+            day.setDayNumber(dayDto.getDayNumber());
+            day.setDate(dayDto.getDate());
+            day.setNotes(dayDto.getNotes());
+            if (dayDto.getBudget() != null) {
+                day.setPlannedBudget(BigDecimal.valueOf(dayDto.getBudget().getPlanned()));
+                day.setActualBudget(BigDecimal.valueOf(dayDto.getBudget().getActual()));
+            }
+            day.setCreatedAt(LocalDateTime.now());
+            day.setUpdatedAt(LocalDateTime.now());
 
-            // Map activities
-            if (dayDto.getSections().getActivities() != null) {
-                log.debug("Mapping activities for Day id: {}", day.getId());
-                dayDto.getSections().getActivities().forEach(activityDto -> {
-                    Activity act = new Activity();
-                    act.setDay(day);
-                    act.setSequenceNumber(2);
-                    Place p = new Place();
-                    p.setName(activityDto.getTitle());
-                    p.setDescription(activityDto.getDescription());
-                    if (activityDto.getLocation() != null && activityDto.getLocation().getCoordinates() != null) {
-                        String coordStr = String.join(",", activityDto.getLocation().getCoordinates()
-                                .stream().map(Object::toString).toArray(String[]::new));
-                        p.setCoordinates(coordStr);
-                        p.setName(activityDto.getLocation().getName());
-                    }
-                    p.setPlaceType("activity");
-                    if (activityDto.getContact() != null) {
-                        p.setPhone(activityDto.getContact().getPhone());
-                        p.setWebsite(activityDto.getContact().getWebsite());
-                        p.setGoogleMapsUrl(activityDto.getContact().getGoogleMapsUrl());
-                    }
-                    if (activityDto.getPhotos() != null) {
-                        activityDto.getPhotos().forEach(photoDto -> {
-                            if (photoDto != null) {
-                                Photo photo = new Photo();
-                                photo.setUrl(photoDto.getUrl());
-                                photo.setCaption(photoDto.getCaption());
-                                photo.setCreatedAt(LocalDateTime.now());
-                                photo.setPlace(p);
-                                p.getPhotos().add(photo);
-                            }
-                        });
-                    }
-                    if (activityDto.getOperatingHours() != null && activityDto.getOperatingHours().getPeriods() != null) {
-                        activityDto.getOperatingHours().getPeriods().forEach(periodDto -> {
-                            if (periodDto != null) {
+            // Map activities/sections
+            List<Activity> allActivities = new ArrayList<>();
+            if (dayDto.getSections() != null) {
+                log.debug("Mapping sections for Day id: {}", day.getId());
+                // Map hotels
+                if (dayDto.getSections().getHotels() != null) {
+                    log.debug("Mapping hotels for Day id: {}", day.getId());
+                    dayDto.getSections().getHotels().forEach(hotelDto -> {
+                        Activity act = new Activity();
+                        act.setDay(day);
+                        act.setSequenceNumber(1);
+
+                        Place p = new Place();
+                        p.setName(hotelDto.getTitle());
+                        p.setDescription(hotelDto.getDescription());
+                        if (hotelDto.getLocation() != null && hotelDto.getLocation().getCoordinates() != null) {
+                            String coordStr = String.join(",", hotelDto.getLocation().getCoordinates()
+                                    .stream().map(Object::toString).toArray(String[]::new));
+                            p.setCoordinates(coordStr);
+                            p.setName(hotelDto.getLocation().getName());
+                        }
+                        p.setPlaceType("hotel");
+                        if (hotelDto.getContact() != null) {
+                            p.setPhone(hotelDto.getContact().getPhone());
+                            p.setWebsite(hotelDto.getContact().getWebsite());
+                            p.setGoogleMapsUrl(hotelDto.getContact().getGoogleMapsUrl());
+                        }
+                        if (hotelDto.getPhotos() != null) {
+                            hotelDto.getPhotos().forEach(photoDto -> {
+                                if (photoDto != null) {
+                                    Photo photo = new Photo();
+                                    photo.setUrl(photoDto.getUrl());
+                                    photo.setCaption(photoDto.getCaption());
+                                    photo.setCreatedAt(LocalDateTime.now());
+                                    photo.setPlace(p);
+                                    p.getPhotos().add(photo);
+                                }
+                            });
+                        }
+                        if (hotelDto.getOperatingHours() != null && hotelDto.getOperatingHours().getPeriods() != null) {
+                            hotelDto.getOperatingHours().getPeriods().forEach(periodDto -> {
                                 OperatingHours oh = new OperatingHours();
-                                oh.setDayOfWeek(periodDto.getDay());
-                                if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                    String[] times = periodDto.getHours().split("-");
-                                    try {
-                                        oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                        oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                                    } catch (Exception e) {
-                                        log.error("Error parsing operating hours for activity: {}", e.getMessage());
+                                if (periodDto != null) {
+                                    oh.setDayOfWeek(periodDto.getDay());
+                                    if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                        String[] times = periodDto.getHours().split("-");
+                                        try {
+                                            oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                            oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                        } catch (Exception e) {
+                                            log.error("Error parsing operating hours for hotel: {}", e.getMessage());
+                                        }
+                                    } else {
+                                        oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
+                                        oh.setCloseTime(LocalTime.of(23, 59, 0));
                                     }
-                                } else {
-                                    oh.setOpenTime(LocalTime.of(0, 0, 0));
-                                    oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                    oh.setPlace(p);
+                                    p.getOperatingHours().add(oh);
                                 }
-                                oh.setPlace(p);
-                                p.getOperatingHours().add(oh);
-                            }
-                        });
-                    }
-                    act.setPlace(p);
-                    if (activityDto.getStartTime() != null)
-                        act.setStartTime(LocalTime.parse(activityDto.getStartTime()));
-                    if (activityDto.getEndTime() != null)
-                        act.setEndTime(LocalTime.parse(activityDto.getEndTime()));
-                    act.setDuration(activityDto.getDuration());
-                    act.setPrice(activityDto.getPrice());
-                    if (activityDto.getBookingInfo() != null) {
-                        BookingInfo bi = new BookingInfo();
-                        bi.setConfirmationNumber(activityDto.getBookingInfo().getConfirmationNumber());
-                        bi.setReservationNumber(activityDto.getBookingInfo().getReservationNumber());
-                        bi.setNotes(activityDto.getBookingInfo().getNotes());
-                        act.setBookingInfo(bi);
-                    }
-                    act.setCreatedAt(LocalDateTime.now());
-                    act.setUpdatedAt(LocalDateTime.now());
-                    allActivities.add(act);
-                });
-            }
+                            });
+                        }
+                        act.setPlace(p);
+                        if (hotelDto.getStartTime() != null)
+                            act.setStartTime(LocalTime.parse(hotelDto.getStartTime()));
+                        if (hotelDto.getEndTime() != null)
+                            act.setEndTime(LocalTime.parse(hotelDto.getEndTime()));
+                        act.setDuration(hotelDto.getDuration());
+                        act.setPrice(hotelDto.getPrice());
+                        if (hotelDto.getBookingInfo() != null) {
+                            BookingInfo bi = new BookingInfo();
+                            bi.setConfirmationNumber(hotelDto.getBookingInfo().getConfirmationNumber());
+                            bi.setReservationNumber(hotelDto.getBookingInfo().getReservationNumber());
+                            bi.setNotes(hotelDto.getBookingInfo().getNotes());
+                            act.setBookingInfo(bi);
+                        }
+                        act.setCreatedAt(LocalDateTime.now());
+                        act.setUpdatedAt(LocalDateTime.now());
+                        allActivities.add(act);
+                    });
+                }
 
-            // Map restaurants
-            if (dayDto.getSections().getRestaurants() != null) {
-                log.debug("Mapping restaurants for Day id: {}", day.getId());
-                dayDto.getSections().getRestaurants().forEach(restDto -> {
-                    Activity act = new Activity();
-                    act.setDay(day);
-                    act.setSequenceNumber(3);
-                    Place p = new Place();
-                    p.setName(restDto.getTitle());
-                    p.setDescription(restDto.getDescription());
-                    if (restDto.getLocation() != null && restDto.getLocation().getCoordinates() != null) {
-                        String coordStr = String.join(",", restDto.getLocation().getCoordinates()
-                                .stream().map(Object::toString).toArray(String[]::new));
-                        p.setCoordinates(coordStr);
-                        p.setName(restDto.getLocation().getName());
-                    }
-                    p.setPlaceType("restaurant");
-                    if (restDto.getContact() != null) {
-                        p.setPhone(restDto.getContact().getPhone());
-                        p.setWebsite(restDto.getContact().getWebsite());
-                        p.setGoogleMapsUrl(restDto.getContact().getGoogleMapsUrl());
-                    }
-                    if (restDto.getPhotos() != null) {
-                        restDto.getPhotos().forEach(photoDto -> {
-                            if (photoDto != null) {
-                                Photo photo = new Photo();
-                                photo.setUrl(photoDto.getUrl());
-                                photo.setCaption(photoDto.getCaption());
-                                photo.setCreatedAt(LocalDateTime.now());
-                                photo.setPlace(p);
-                                p.getPhotos().add(photo);
-                            }
-                        });
-                    }
-                    if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods() != null) {
-                        restDto.getOperatingHours().getPeriods().forEach(periodDto -> {
-                            OperatingHours oh = new OperatingHours();
-                            if (periodDto != null) {
-                                oh.setDayOfWeek(periodDto.getDay());
-                                if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                    String[] times = periodDto.getHours().split("-");
-                                    try {
-                                        oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                        oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                                    } catch (Exception e) {
-                                        log.error("Error parsing operating hours for restaurant: {}", e.getMessage());
-                                    }
-                                } else {
-                                    oh.setOpenTime(LocalTime.of(0, 0, 0));
-                                    oh.setCloseTime(LocalTime.of(23, 59, 0));
+                // Map activities
+                if (dayDto.getSections().getActivities() != null) {
+                    log.debug("Mapping activities for Day id: {}", day.getId());
+                    dayDto.getSections().getActivities().forEach(activityDto -> {
+                        Activity act = new Activity();
+                        act.setDay(day);
+                        act.setSequenceNumber(2);
+                        Place p = new Place();
+                        p.setName(activityDto.getTitle());
+                        p.setDescription(activityDto.getDescription());
+                        if (activityDto.getLocation() != null && activityDto.getLocation().getCoordinates() != null) {
+                            String coordStr = String.join(",", activityDto.getLocation().getCoordinates()
+                                    .stream().map(Object::toString).toArray(String[]::new));
+                            p.setCoordinates(coordStr);
+                            p.setName(activityDto.getLocation().getName());
+                        }
+                        p.setPlaceType("activity");
+                        if (activityDto.getContact() != null) {
+                            p.setPhone(activityDto.getContact().getPhone());
+                            p.setWebsite(activityDto.getContact().getWebsite());
+                            p.setGoogleMapsUrl(activityDto.getContact().getGoogleMapsUrl());
+                        }
+                        if (activityDto.getPhotos() != null) {
+                            activityDto.getPhotos().forEach(photoDto -> {
+                                if (photoDto != null) {
+                                    Photo photo = new Photo();
+                                    photo.setUrl(photoDto.getUrl());
+                                    photo.setCaption(photoDto.getCaption());
+                                    photo.setCreatedAt(LocalDateTime.now());
+                                    photo.setPlace(p);
+                                    p.getPhotos().add(photo);
                                 }
-                                oh.setPlace(p);
-                                p.getOperatingHours().add(oh);
-                            }
-                        });
-                    }
-                    act.setPlace(p);
-                    if (restDto.getStartTime() != null)
-                        act.setStartTime(LocalTime.parse(restDto.getStartTime()));
-                    if (restDto.getEndTime() != null)
-                        act.setEndTime(LocalTime.parse(restDto.getEndTime()));
-                    act.setDuration(restDto.getDuration());
-                    act.setPrice(restDto.getPrice());
-                    if (restDto.getBookingInfo() != null) {
-                        BookingInfo bi = new BookingInfo();
-                        bi.setConfirmationNumber(restDto.getBookingInfo().getConfirmationNumber());
-                        bi.setReservationNumber(restDto.getBookingInfo().getReservationNumber());
-                        bi.setNotes(restDto.getBookingInfo().getNotes());
-                        act.setBookingInfo(bi);
-                    }
-                    act.setCreatedAt(LocalDateTime.now());
-                    act.setUpdatedAt(LocalDateTime.now());
-                    allActivities.add(act);
-                });
+                            });
+                        }
+                        if (activityDto.getOperatingHours() != null && activityDto.getOperatingHours().getPeriods() != null) {
+                            activityDto.getOperatingHours().getPeriods().forEach(periodDto -> {
+                                if (periodDto != null) {
+                                    OperatingHours oh = new OperatingHours();
+                                    oh.setDayOfWeek(periodDto.getDay());
+                                    if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                        String[] times = periodDto.getHours().split("-");
+                                        try {
+                                            oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                            oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                        } catch (Exception e) {
+                                            log.error("Error parsing operating hours for activity: {}", e.getMessage());
+                                        }
+                                    } else {
+                                        oh.setOpenTime(LocalTime.of(0, 0, 0));
+                                        oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                    }
+                                    oh.setPlace(p);
+                                    p.getOperatingHours().add(oh);
+                                }
+                            });
+                        }
+                        act.setPlace(p);
+                        if (activityDto.getStartTime() != null)
+                            act.setStartTime(LocalTime.parse(activityDto.getStartTime()));
+                        if (activityDto.getEndTime() != null)
+                            act.setEndTime(LocalTime.parse(activityDto.getEndTime()));
+                        act.setDuration(activityDto.getDuration());
+                        act.setPrice(activityDto.getPrice());
+                        if (activityDto.getBookingInfo() != null) {
+                            BookingInfo bi = new BookingInfo();
+                            bi.setConfirmationNumber(activityDto.getBookingInfo().getConfirmationNumber());
+                            bi.setReservationNumber(activityDto.getBookingInfo().getReservationNumber());
+                            bi.setNotes(activityDto.getBookingInfo().getNotes());
+                            act.setBookingInfo(bi);
+                        }
+                        act.setCreatedAt(LocalDateTime.now());
+                        act.setUpdatedAt(LocalDateTime.now());
+                        allActivities.add(act);
+                    });
+                }
+
+                // Map restaurants
+                if (dayDto.getSections().getRestaurants() != null) {
+                    log.debug("Mapping restaurants for Day id: {}", day.getId());
+                    dayDto.getSections().getRestaurants().forEach(restDto -> {
+                        Activity act = new Activity();
+                        act.setDay(day);
+                        act.setSequenceNumber(3);
+                        Place p = new Place();
+                        p.setName(restDto.getTitle());
+                        p.setDescription(restDto.getDescription());
+                        if (restDto.getLocation() != null && restDto.getLocation().getCoordinates() != null) {
+                            String coordStr = String.join(",", restDto.getLocation().getCoordinates()
+                                    .stream().map(Object::toString).toArray(String[]::new));
+                            p.setCoordinates(coordStr);
+                            p.setName(restDto.getLocation().getName());
+                        }
+                        p.setPlaceType("restaurant");
+                        if (restDto.getContact() != null) {
+                            p.setPhone(restDto.getContact().getPhone());
+                            p.setWebsite(restDto.getContact().getWebsite());
+                            p.setGoogleMapsUrl(restDto.getContact().getGoogleMapsUrl());
+                        }
+                        if (restDto.getPhotos() != null) {
+                            restDto.getPhotos().forEach(photoDto -> {
+                                if (photoDto != null) {
+                                    Photo photo = new Photo();
+                                    photo.setUrl(photoDto.getUrl());
+                                    photo.setCaption(photoDto.getCaption());
+                                    photo.setCreatedAt(LocalDateTime.now());
+                                    photo.setPlace(p);
+                                    p.getPhotos().add(photo);
+                                }
+                            });
+                        }
+                        if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods() != null) {
+                            restDto.getOperatingHours().getPeriods().forEach(periodDto -> {
+                                OperatingHours oh = new OperatingHours();
+                                if (periodDto != null) {
+                                    oh.setDayOfWeek(periodDto.getDay());
+                                    if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                        String[] times = periodDto.getHours().split("-");
+                                        try {
+                                            oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                            oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                        } catch (Exception e) {
+                                            log.error("Error parsing operating hours for restaurant: {}", e.getMessage());
+                                        }
+                                    } else {
+                                        oh.setOpenTime(LocalTime.of(0, 0, 0));
+                                        oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                    }
+                                    oh.setPlace(p);
+                                    p.getOperatingHours().add(oh);
+                                }
+                            });
+                        }
+                        act.setPlace(p);
+                        if (restDto.getStartTime() != null)
+                            act.setStartTime(LocalTime.parse(restDto.getStartTime()));
+                        if (restDto.getEndTime() != null)
+                            act.setEndTime(LocalTime.parse(restDto.getEndTime()));
+                        act.setDuration(restDto.getDuration());
+                        act.setPrice(restDto.getPrice());
+                        if (restDto.getBookingInfo() != null) {
+                            BookingInfo bi = new BookingInfo();
+                            bi.setConfirmationNumber(restDto.getBookingInfo().getConfirmationNumber());
+                            bi.setReservationNumber(restDto.getBookingInfo().getReservationNumber());
+                            bi.setNotes(restDto.getBookingInfo().getNotes());
+                            act.setBookingInfo(bi);
+                        }
+                        act.setCreatedAt(LocalDateTime.now());
+                        act.setUpdatedAt(LocalDateTime.now());
+                        allActivities.add(act);
+                    });
+                }
             }
+            day.setActivities(allActivities);
+
+            // Travel routes mapping commented out in original code.
+            log.info("Completed mapping of DayDTO to Day entity; Day id: {}", day.getId());
+            return day;
+        } catch (Exception e) {
+            log.error("Exception during mapping DayDTO to Day entity; DayDTO id: {}: {}", dayDto.getId(), e.getMessage());
+            return day;
         }
-        day.setActivities(allActivities);
-
-        // Travel routes mapping commented out in original code.
-        log.info("Completed mapping of DayDTO to Day entity; Day id: {}", day.getId());
-        return day;
     }
 }

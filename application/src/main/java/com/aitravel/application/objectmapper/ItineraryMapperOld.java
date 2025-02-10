@@ -1,4 +1,5 @@
 package com.aitravel.application.objectmapper;
+import com.aitravel.application.dto.ItineraryDTO;
 import com.aitravel.application.dto.responsedtos.DayResponse;
 import com.aitravel.application.dto.responsedtos.ItineraryResponse;
 import com.aitravel.application.dto.responsedtos.LocationResponse;
@@ -9,19 +10,12 @@ import java.util.stream.Collectors;
 @Component
 public class ItineraryMapperOld {
 
-    public ItineraryResponse toResponse(ItineraryOld itinerary) {
-        return new ItineraryResponse(
-                itinerary.getUser().getUserId(),
-                itinerary.getTitle(),
-                itinerary.getDescription(),
-                itinerary.getDays().stream().map(day -> new DayResponse(
-                        day.getDayNumber(),
-                        day.getLocations().stream().map(location -> new LocationResponse(
-                                location.getName(),
-                                location.getLatitude(),
-                                location.getLongitude()
-                        )).collect(Collectors.toList())
-                )).collect(Collectors.toList())
-        );
+    public ItineraryResponse itineraryResponse(ItineraryDTO itineraryDto, String message) {
+        ItineraryResponse response = new ItineraryResponse();
+        response.setId(itineraryDto.getId());
+        response.setUserId(itineraryDto.getUserId());
+        response.setMessage(message);
+        response.setCreatedAt(itineraryDto.getCreatedAt());
+        return response;
     }
 }

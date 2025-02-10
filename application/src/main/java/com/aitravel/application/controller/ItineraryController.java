@@ -2,6 +2,7 @@ package com.aitravel.application.controller;
 
 import com.aitravel.application.dto.ItineraryBasicDTO;
 import com.aitravel.application.dto.ItineraryDTO;
+import com.aitravel.application.dto.responsedtos.ItineraryResponse;
 import com.aitravel.application.exceptions.ResourceNotFoundException;
 import com.aitravel.application.service.ItineraryService;
 import lombok.extern.slf4j.Slf4j;
@@ -27,40 +28,65 @@ public class ItineraryController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<String> createItinerary(@RequestBody Map<String, ItineraryDTO> payload) {
+    public ResponseEntity<ItineraryResponse> createItinerary(@RequestBody Map<String, ItineraryDTO> payload) {
         log.info("Received request to create itinerary with payload: {}", payload);
-        ItineraryDTO dto = payload.get("itinerary"); // Unwrap the payload
-        if (dto == null) {
-            log.warn("Itinerary payload is null");
-            return ResponseEntity.badRequest().build();
+        try {
+            ItineraryDTO dto = payload.get("itinerary"); // Unwrap the payload
+            if (dto == null) {
+                log.warn("Itinerary payload is null");
+                return ResponseEntity.badRequest().build();
+            }
+            ItineraryDTO created = itineraryService.createItinerary(dto);
+            log.info("Itinerary created successfully with id: {}", created.getId());
+            ItineraryResponse response = ItineraryResponse.fromDtoWithMessage(created,
+                    "Itinerary Created Successfully");
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("Error creating itinerary: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-        ItineraryDTO created = itineraryService.createItinerary(dto);
-        log.info("Itinerary created successfully with id: {}", created.getId());
-        return new ResponseEntity<>("Itinerary Created Successfully with ItineraryId: " + created.getId() , HttpStatus.CREATED);
     }
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<ItineraryDTO>> getItinerariesByUser(@PathVariable String userId) {
         log.info("Fetching itineraries for user with id: {}", userId);
-        List<ItineraryDTO> itineraries = itineraryService.getItinerariesByUserId(userId);
-        log.info("Found {} itineraries for user {}", itineraries.size(), userId);
-        return ResponseEntity.ok(itineraries);
+        try {
+            List<ItineraryDTO> itineraries = itineraryService.getItinerariesByUserId(userId);
+            log.info("Found {} itineraries for user {}", itineraries.size(), userId);
+            return ResponseEntity.ok(itineraries);
+        } catch (Exception e) {
+            log.error("Error fetching itineraries for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/{itineraryId}")
     public ResponseEntity<ItineraryDTO> getItineraryById(@PathVariable UUID itineraryId) {
         log.info("Fetching itinerary by id: {}", itineraryId);
-        ItineraryDTO dto = itineraryService.getItineraryById(itineraryId);
-        log.info("Itinerary found with id: {}", dto.getId());
-        return ResponseEntity.ok(dto);
+        try {
+            ItineraryDTO dto = itineraryService.getItineraryById(itineraryId);
+            log.info("Itinerary found with id: {}", dto.getId());
+            return ResponseEntity.ok(dto);
+        } catch (ResourceNotFoundException e) {
+            log.warn("Itinerary not found with id: {}", itineraryId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error fetching itinerary by id {}: {}", itineraryId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/basic/user/{userId}")
     public ResponseEntity<List<ItineraryBasicDTO>> getItineraryBasicByUser(@PathVariable String userId) {
         log.info("Fetching basic itineraries for user with id: {}", userId);
-        List<ItineraryBasicDTO> basicItineraries = itineraryService.getItineraryBasicByUserId(userId);
-        log.info("Found {} basic itineraries for user {}", basicItineraries.size(), userId);
-        return ResponseEntity.ok(basicItineraries);
+        try {
+            List<ItineraryBasicDTO> basicItineraries = itineraryService.getItineraryBasicByUserId(userId);
+            log.info("Found {} basic itineraries for user {}", basicItineraries.size(), userId);
+            return ResponseEntity.ok(basicItineraries);
+        } catch (Exception e) {
+            log.error("Error fetching basic itineraries for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
 //    @PostMapping("/upsert")
@@ -82,9 +108,13 @@ public class ItineraryController {
     @DeleteMapping("/{itineraryId}")
     public ResponseEntity<Void> deleteItinerary(@PathVariable UUID itineraryId) {
         log.info("Deleting itinerary with id: {}", itineraryId);
-        itineraryService.deleteItinerary(itineraryId);
-        log.info("Itinerary with id {} deleted successfully", itineraryId);
-        return ResponseEntity.noContent().build();
+        try {
+            itineraryService.deleteItinerary(itineraryId);
+            log.info("Itinerary with id {} deleted successfully", itineraryId);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error deleting itinerary with id {}: {}", itineraryId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
-
 }
