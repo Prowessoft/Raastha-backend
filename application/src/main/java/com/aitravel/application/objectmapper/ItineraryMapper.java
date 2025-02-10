@@ -426,32 +426,35 @@ public class ItineraryMapper {
                     }
                     if (hotelDto.getPhotos() != null) {
                         hotelDto.getPhotos().forEach(photoDto -> {
-                            Photo photo = new Photo();
-                            photo.setUrl(photoDto.getUrl());
-                            photo.setCaption(photoDto.getCaption());
-                            photo.setCreatedAt(LocalDateTime.now());
-                            photo.setPlace(p);
-                            p.getPhotos().add(photo);
+                            if(photoDto != null) {
+                                Photo photo = new Photo();
+                                photo.setUrl(photoDto.getUrl());
+                                photo.setCaption(photoDto.getCaption());
+                                photo.setCreatedAt(LocalDateTime.now());
+                                photo.setPlace(p);
+                                p.getPhotos().add(photo);
+                            }
                         });
                     }
                     if (hotelDto.getOperatingHours() != null && hotelDto.getOperatingHours().getPeriods() != null) {
                         hotelDto.getOperatingHours().getPeriods().forEach(periodDto -> {
                             //todo--> is open or close(isOpen) variable
                             OperatingHours oh = new OperatingHours();
+                                    if(periodDto != null) {
+                                        oh.setDayOfWeek(periodDto.getDay());
 
-                                oh.setDayOfWeek(periodDto.getDay());
-
-                            if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
-                                String[] times = periodDto.getHours().split("-");
-                                oh.setOpenTime(LocalTime.parse(times[0].trim()));
-                                oh.setCloseTime(LocalTime.parse(times[1].trim()));
-                            }else{
-                                //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
-                                oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
-                                oh.setCloseTime(LocalTime.of(23, 59, 0));
-                            }
-                            oh.setPlace(p);
-                            p.getOperatingHours().add(oh);
+                                        if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
+                                            String[] times = periodDto.getHours().split("-");
+                                            oh.setOpenTime(LocalTime.parse(times[0].trim()));
+                                            oh.setCloseTime(LocalTime.parse(times[1].trim()));
+                                        } else {
+                                            //todo need to add one more string variable to store like string "open 24 hrs ", "Perminently closed " like this
+                                            oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
+                                            oh.setCloseTime(LocalTime.of(23, 59, 0));
+                                        }
+                                        oh.setPlace(p);
+                                        p.getOperatingHours().add(oh);
+                                    }
                         });
                     }
                     act.setPlace(p);
@@ -497,12 +500,14 @@ public class ItineraryMapper {
                     }
                     if (activityDto.getPhotos() != null) {
                         activityDto.getPhotos().forEach(photoDto -> {
-                            Photo photo = new Photo();
-                            photo.setUrl(photoDto.getUrl());
-                            photo.setCaption(photoDto.getCaption());
-                            photo.setCreatedAt(LocalDateTime.now());
-                            photo.setPlace(p);
-                            p.getPhotos().add(photo);
+                            if(photoDto != null) {
+                                Photo photo = new Photo();
+                                photo.setUrl(photoDto.getUrl());
+                                photo.setCaption(photoDto.getCaption());
+                                photo.setCreatedAt(LocalDateTime.now());
+                                photo.setPlace(p);
+                                p.getPhotos().add(photo);
+                            }
                         });
                     }
                     if (activityDto.getOperatingHours() != null && activityDto.getOperatingHours().getPeriods() != null) {
@@ -568,21 +573,24 @@ public class ItineraryMapper {
                     }
                     if (restDto.getPhotos() != null) {
                         restDto.getPhotos().forEach(photoDto -> {
-                            Photo photo = new Photo();
-                            photo.setUrl(photoDto.getUrl());
-                            photo.setCaption(photoDto.getCaption());
-                            photo.setCreatedAt(LocalDateTime.now());
-                            photo.setPlace(p);
-                            p.getPhotos().add(photo);
+                            if(photoDto != null) {
+                                Photo photo = new Photo();
+                                photo.setUrl(photoDto.getUrl());
+                                photo.setCaption(photoDto.getCaption());
+                                photo.setCreatedAt(LocalDateTime.now());
+                                photo.setPlace(p);
+                                p.getPhotos().add(photo);
+                            }
                         });
                     }
-                    if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods() != null) {
+                    if (restDto.getOperatingHours() != null && restDto.getOperatingHours().getPeriods().size() > 0) {
                         restDto.getOperatingHours().getPeriods().forEach(periodDto -> {
+
                             //todo--> is open or close(isOpen) variable
                             OperatingHours oh = new OperatingHours();
 
-                            oh.setDayOfWeek(periodDto.getDay());
-
+                            if(periodDto != null) {
+                                oh.setDayOfWeek(periodDto.getDay());
                             if (periodDto.getHours() != null && periodDto.getHours().contains("-")) {
                                 String[] times = periodDto.getHours().split("-");
                                 oh.setOpenTime(LocalTime.parse(times[0].trim()));
@@ -592,8 +600,10 @@ public class ItineraryMapper {
                                 oh.setOpenTime(LocalTime.of(0, 0, 0));    // 00:00:00
                                 oh.setCloseTime(LocalTime.of(23, 59, 0));
                             }
+
                             oh.setPlace(p);
                             p.getOperatingHours().add(oh);
+                            }
                         });
                     }
                     act.setPlace(p);
